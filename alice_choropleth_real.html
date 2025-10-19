@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALICE Data Explorer - Real Choropleth Mapping</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    
+    <!-- Papa Parse for CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+
+        .header {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            color: #333;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            position: relative;
+            z-index: 1000;
+        }
+
+        .header h1 {
+            font-size: 2.8em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.8;
+            margin-bottom: 15px;
+        }
+
+        .stats-bar {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .stat-pill {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 25px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .container {
+            display: flex;
+            height: calc(100vh - 180px);
+            margin: 0;
+            gap: 0;
+        }
+
+        .sidebar {
+            width: 380px;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(102, 126, 234, 0.2);
+            overflow-y: auto;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+        }
+
+        .map-container {
+            flex: 1;
+            position: relative;
+            background: #f8f9fa;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        .control-panel {
+            padding: 25px;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+            background: rgba(255,255,255,0.8);
+        }
+
+        .control-panel:nth-child(odd) {
+            background: rgba(248, 249, 250, 0.8);
+        }
+
+        .control-panel h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+            font-size: 0.95em;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid rgba(102, 126, 234, 0.2);
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .range-inputs {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .range-inputs input {
+            flex: 1;
+        }
+
+        .range-inputs span {
+            color: #666;
+            font-weight: 500;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-clear {
+            background: linear-gradient(135deg, #e17055 0%, #e84393 100%);
+        }
+
+        .btn-export {
+            background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+        }
+
+        .advanced-stats {
+            padding: 25px;
+            background: rgba(248, 249, 250, 0.9);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .stat-item {
+            background: white;
+            padding: 18px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .stat-item:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .stat-value {
+            font-size: 1.9em;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 8px;
+            font-weight: 500;
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+            z-index: 1000;
+            min-width: 200px;
+        }
+
+        .legend h4 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+
+        .legend-color {
+            width: 24px;
+            height: 16px;
+            margin-right: 10px;
+            border-radius: 4px;
+            border: 1px solid rgba(0,0,0,0.2);
+        }
+
+        .search-container {
+            position: relative;
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #667eea;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .search-result-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            transition: background 0.2s;
+        }
+
+        .search-result-item:hover {
+            background: #f8f9fa;
+            color: #667eea;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .chart-container {
+            height: 250px;
+            margin-top: 25px;
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .layer-controls {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+
+        .layer-controls h4 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        .layer-toggle {
+            margin: 8px 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .layer-toggle input {
+            width: auto;
+            margin-right: 10px;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+            z-index: 1000;
+            max-width: 350px;
+        }
+
+        .info-panel h4 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: 350px;
+            }
+            
+            .map-container {
+                height: calc(100vh - 530px);
+            }
+
+            .stats-bar {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .legend, .layer-controls, .info-panel {
+                position: relative;
+                margin: 15px;
+            }
+        }
+
+        /* Choropleth-specific styles */
+        .county-boundary {
+            fill-opacity: 0.8;
+            stroke: #fff;
+            stroke-width: 1;
+            stroke-opacity: 0.8;
+        }
+
+        .county-boundary:hover {
+            stroke-width: 2;
+            stroke: #333;
+        }
+
+        .county-highlighted {
+            stroke-width: 3;
+            stroke: #ff6b6b;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🗺️ ALICE Real Choropleth Explorer</h1>
+        <p>Interactive County-Level Mapping with Geographic Boundaries</p>
+        <div class="stats-bar">
+            <div class="stat-pill">📊 <span id="totalCounties">Loading...</span> Counties</div>
+            <div class="stat-pill">🏠 <span id="totalHouseholds">Loading...</span> Households</div>
+            <div class="stat-pill">📈 <span id="avgALICE">Loading...</span> Avg ALICE %</div>
+            <div class="stat-pill">📉 <span id="avgPoverty">Loading...</span> Avg Poverty %</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <!-- Color Mapping Controls -->
+            <div class="control-panel">
+                <h3>🎨 Color Mapping</h3>
+                <div class="form-group">
+                    <label for="colorMetric">Color Counties By:</label>
+                    <select id="colorMetric">
+                        <option value="ALICE_Percentage">ALICE Percentage</option>
+                        <option value="Below_ALICE_Threshold_Percentage">Below ALICE Threshold %</option>
+                        <option value="Poverty_Percentage">Poverty Percentage</option>
+                        <option value="Above_ALICE_Percentage">Above ALICE Percentage</option>
+                        <option value="Households">Total Households</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Geographic Filters -->
+            <div class="control-panel">
+                <h3>🌍 Geographic Filters</h3>
+                <div class="form-group">
+                    <label for="stateFilter">State:</label>
+                    <select id="stateFilter">
+                        <option value="">All States</option>
+                    </select>
+                </div>
+
+                <div class="form-group search-container">
+                    <label for="countySearch">🔍 Search County:</label>
+                    <input type="text" id="countySearch" placeholder="Type county name...">
+                    <div class="search-results" id="searchResults"></div>
+                </div>
+            </div>
+
+            <!-- Data Filters -->
+            <div class="control-panel">
+                <h3>📈 Data Filters</h3>
+                <div class="form-group">
+                    <label>ALICE Percentage Range:</label>
+                    <div class="range-inputs">
+                        <input type="number" id="aliceMin" placeholder="0" min="0" max="100">
+                        <span>to</span>
+                        <input type="number" id="aliceMax" placeholder="100" min="0" max="100">
+                        <span>%</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Poverty Percentage Range:</label>
+                    <div class="range-inputs">
+                        <input type="number" id="povertyMin" placeholder="0" min="0" max="100">
+                        <span>to</span>
+                        <input type="number" id="povertyMax" placeholder="100" min="0" max="100">
+                        <span>%</span>
+                    </div>
+                </div>
+
+                <button class="btn" onclick="applyFilters()">🔍 Apply Filters</button>
+                <button class="btn btn-clear" onclick="clearFilters()">🧹 Clear All</button>
+            </div>
+
+            <!-- Statistics -->
+            <div class="advanced-stats">
+                <h3>📊 Current View Statistics</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="statCounties">-</div>
+                        <div class="stat-label">Counties Shown</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="statHouseholds">-</div>
+                        <div class="stat-label">Total Households</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="statAvgALICE">-</div>
+                        <div class="stat-label">Avg ALICE %</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="statAvgPoverty">-</div>
+                        <div class="stat-label">Avg Poverty %</div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div id="plotlyChart"></div>
+                </div>
+            </div>
+
+            <!-- Export Tools -->
+            <div class="control-panel">
+                <h3>💾 Export & Share</h3>
+                <button class="btn btn-export" onclick="exportFilteredData()">📊 Export Filtered Data</button>
+                <button class="btn btn-export" onclick="exportVisualization()">📈 Export Map Image</button>
+                <button class="btn" onclick="shareCurrentView()">🔗 Share Current View</button>
+            </div>
+        </div>
+
+        <div class="map-container">
+            <div id="map"></div>
+            
+            <!-- Legend -->
+            <div class="legend">
+                <h4 id="legendTitle">ALICE Percentage</h4>
+                <div id="legendContent">
+                    <!-- Legend items will be dynamically generated -->
+                </div>
+                <div style="margin-top: 15px; font-size: 0.8em; color: #666;">
+                    Click counties for details
+                </div>
+            </div>
+
+            <!-- Layer Controls -->
+            <div class="layer-controls">
+                <h4>🎛️ Map Controls</h4>
+                <div class="layer-toggle">
+                    <input type="checkbox" id="showCountyLabels" checked>
+                    <label for="showCountyLabels">County Labels</label>
+                </div>
+                <div class="layer-toggle">
+                    <input type="checkbox" id="showStateBorders" checked>
+                    <label for="showStateBorders">State Borders</label>
+                </div>
+            </div>
+
+            <!-- Info Panel -->
+            <div class="info-panel">
+                <h4>🎯 County Information</h4>
+                <div id="countyInfo">
+                    <p>Hover over or click any county to see detailed ALICE data including household counts, poverty rates, and economic indicators.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let map;
+        let countyLayer;
+        let aliceData = {};
+        let filteredCounties = [];
+        let allCountyData = [];
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeMap();
+            loadData();
+            setupEventListeners();
+        });
+
+        function initializeMap() {
+            map = L.map('map').setView([39.8283, -98.5795], 4);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 18
+            }).addTo(map);
+
+            map.zoomControl.setPosition('topleft');
+        }
+
+        async function loadData() {
+            try {
+                updateHeaderStats('Loading...', 'Loading...', 'Loading...', 'Loading...');
+                
+                // Load ALICE data
+                const aliceResponse = await fetch('alice_clean_data/ALICE_Mapping_County_Data.csv');
+                const aliceText = await aliceResponse.text();
+                allCountyData = Papa.parse(aliceText, { header: true, skipEmptyLines: true }).data
+                    .filter(row => row.State && row.County);
+
+                // Create ALICE data lookup by FIPS code
+                allCountyData.forEach(row => {
+                    const fips = String(row['GEO id2']).split('.')[0]; // Remove decimal
+                    aliceData[fips] = row;
+                });
+
+                console.log(`Loaded ${allCountyData.length} county records`);
+
+                // Load county boundaries
+                const boundariesResponse = await fetch('alice-choropleth-tool/docs/boundaries/us_counties.json');
+                const boundariesData = await boundariesResponse.json();
+
+                console.log(`Loaded ${boundariesData.features.length} county boundaries`);
+
+                // Create choropleth layer
+                createChoroplethLayer(boundariesData);
+                
+                // Populate state filter
+                populateStateFilter();
+                
+                // Update statistics
+                updateAllStatistics();
+
+            } catch (error) {
+                console.error('Error loading data:', error);
+                alert('Error loading data. Please check file paths and try again.');
+            }
+        }
+
+        function createChoroplethLayer(geojsonData) {
+            const colorMetric = document.getElementById('colorMetric').value;
+
+            countyLayer = L.geoJSON(geojsonData, {
+                style: function(feature) {
+                    const fips = feature.properties.GEOID;
+                    const countyData = aliceData[fips];
+                    
+                    if (!countyData) {
+                        return {
+                            fillColor: '#cccccc',
+                            weight: 1,
+                            opacity: 0.7,
+                            color: 'white',
+                            fillOpacity: 0.7
+                        };
+                    }
+
+                    const value = parseFloat(countyData[colorMetric]) || 0;
+                    const color = getColor(value, colorMetric);
+
+                    return {
+                        fillColor: color,
+                        weight: 1,
+                        opacity: 0.8,
+                        color: 'white',
+                        fillOpacity: 0.8
+                    };
+                },
+                onEachFeature: function(feature, layer) {
+                    const fips = feature.properties.GEOID;
+                    const countyData = aliceData[fips];
+                    
+                    if (countyData) {
+                        // Mouse events
+                        layer.on({
+                            mouseover: function(e) {
+                                updateCountyInfo(countyData);
+                                layer.setStyle({
+                                    weight: 3,
+                                    color: '#333',
+                                    fillOpacity: 0.9
+                                });
+                            },
+                            mouseout: function(e) {
+                                layer.setStyle({
+                                    weight: 1,
+                                    color: 'white',
+                                    fillOpacity: 0.8
+                                });
+                            },
+                            click: function(e) {
+                                map.fitBounds(e.target.getBounds());
+                                showCountyPopup(countyData, e.latlng);
+                            }
+                        });
+                    }
+                }
+            }).addTo(map);
+
+            updateLegend(colorMetric);
+        }
+
+        function getColor(value, metric) {
+            if (!value || isNaN(value)) return '#cccccc';
+            
+            const scales = {
+                'ALICE_Percentage': {
+                    breaks: [0, 15, 25, 35, 45, 55, 70],
+                    colors: ['#ffffcc', '#c7e9b4', '#7fcdbb', '#41b6c4', '#2c7fb8', '#253494', '#081d58']
+                },
+                'Below_ALICE_Threshold_Percentage': {
+                    breaks: [0, 20, 35, 50, 65, 80, 90],
+                    colors: ['#ffffcc', '#fed976', '#feb24c', '#fd8d3c', '#f03b20', '#bd0026', '#800026']
+                },
+                'Poverty_Percentage': {
+                    breaks: [0, 8, 15, 22, 30, 40, 50],
+                    colors: ['#f7fbff', '#deebf7', '#c6dbef', '#9ecae1', '#6baed6', '#3182bd', '#08519c']
+                },
+                'Above_ALICE_Percentage': {
+                    breaks: [20, 30, 40, 50, 60, 70, 80],
+                    colors: ['#800026', '#bd0026', '#e31a1c', '#fc4e2a', '#fd8d3c', '#feb24c', '#ffffcc']
+                },
+                'Households': {
+                    breaks: [0, 5000, 25000, 75000, 200000, 500000, 1000000],
+                    colors: ['#edf8fb', '#b3cde3', '#8c96c6', '#8856a7', '#810f7c', '#4d004b', '#2d004a']
+                }
+            };
+
+            const scale = scales[metric] || scales['ALICE_Percentage'];
+            const { breaks, colors } = scale;
+            
+            for (let i = breaks.length - 1; i >= 0; i--) {
+                if (value >= breaks[i]) {
+                    return colors[i];
+                }
+            }
+            return colors[0];
+        }
+
+        function updateCountyInfo(countyData) {
+            const info = document.getElementById('countyInfo');
+            const alicePerc = parseFloat(countyData.ALICE_Percentage) || 0;
+            const povertyPerc = parseFloat(countyData.Poverty_Percentage) || 0;
+            const households = parseInt(countyData.Households) || 0;
+
+            info.innerHTML = `
+                <h5>${countyData['GEO display_label']}</h5>
+                <p><strong>ALICE:</strong> ${alicePerc.toFixed(1)}%</p>
+                <p><strong>Poverty:</strong> ${povertyPerc.toFixed(1)}%</p>
+                <p><strong>Households:</strong> ${households.toLocaleString()}</p>
+                <p><strong>Below ALICE Threshold:</strong> ${(parseFloat(countyData.Below_ALICE_Threshold_Percentage) || 0).toFixed(1)}%</p>
+            `;
+        }
+
+        function showCountyPopup(countyData, latlng) {
+            const alicePerc = parseFloat(countyData.ALICE_Percentage) || 0;
+            const povertyPerc = parseFloat(countyData.Poverty_Percentage) || 0;
+            const belowThreshold = parseFloat(countyData.Below_ALICE_Threshold_Percentage) || 0;
+            const households = parseInt(countyData.Households) || 0;
+
+            const popupContent = `
+                <div style="min-width: 280px; font-family: 'Segoe UI', sans-serif;">
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px; margin: -10px -10px 15px -10px; border-radius: 8px 8px 0 0;">
+                        <h3 style="margin: 0; font-size: 1.2em;">${countyData['GEO display_label']}</h3>
+                        <p style="margin: 5px 0 0 0; opacity: 0.9;">${countyData.State}</p>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
+                            <div style="font-size: 1.5em; font-weight: bold; color: #667eea;">${alicePerc.toFixed(1)}%</div>
+                            <div style="font-size: 0.8em; color: #666;">ALICE</div>
+                        </div>
+                        <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 6px;">
+                            <div style="font-size: 1.5em; font-weight: bold; color: #e74c3c;">${povertyPerc.toFixed(1)}%</div>
+                            <div style="font-size: 0.8em; color: #666;">Poverty</div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 10px;">
+                        <strong>Total Households:</strong> ${households.toLocaleString()}
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <strong>Below ALICE Threshold:</strong> ${belowThreshold.toFixed(1)}%
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <strong>Above ALICE Threshold:</strong> ${(parseFloat(countyData.Above_ALICE_Percentage) || 0).toFixed(1)}%
+                    </div>
+                    
+                    <div style="margin-top: 15px; padding: 10px; background: #e8f5e8; border-radius: 6px; border-left: 4px solid #28a745;">
+                        <strong>Analysis:</strong> ${getInsight(alicePerc, povertyPerc, belowThreshold)}
+                    </div>
+                </div>
+            `;
+
+            L.popup()
+                .setLatLng(latlng)
+                .setContent(popupContent)
+                .openOn(map);
+        }
+
+        function getInsight(alice, poverty, belowThreshold) {
+            if (belowThreshold > 60) return "High economic vulnerability - significant support needed";
+            if (belowThreshold > 40) return "Moderate economic vulnerability - targeted assistance recommended";
+            if (belowThreshold > 25) return "Some economic challenges - monitoring advised";
+            return "Relatively stable economic conditions";
+        }
+
+        function populateStateFilter() {
+            const stateSelect = document.getElementById('stateFilter');
+            const states = [...new Set(allCountyData.map(row => row.State))].sort();
+            
+            states.forEach(state => {
+                const option = document.createElement('option');
+                option.value = state;
+                option.textContent = state;
+                stateSelect.appendChild(option);
+            });
+        }
+
+        function updateLegend(metric) {
+            const legendTitle = document.getElementById('legendTitle');
+            const legendContent = document.getElementById('legendContent');
+            
+            const titles = {
+                'ALICE_Percentage': 'ALICE Percentage',
+                'Below_ALICE_Threshold_Percentage': 'Below ALICE Threshold %',
+                'Poverty_Percentage': 'Poverty Percentage',
+                'Above_ALICE_Percentage': 'Above ALICE Percentage',
+                'Households': 'Total Households'
+            };
+            
+            legendTitle.textContent = titles[metric] || 'ALICE Percentage';
+            
+            const ranges = {
+                'ALICE_Percentage': ['0-15%', '15-25%', '25-35%', '35-45%', '45-55%', '55-70%', '70%+'],
+                'Below_ALICE_Threshold_Percentage': ['0-20%', '20-35%', '35-50%', '50-65%', '65-80%', '80-90%', '90%+'],
+                'Poverty_Percentage': ['0-8%', '8-15%', '15-22%', '22-30%', '30-40%', '40-50%', '50%+'],
+                'Above_ALICE_Percentage': ['20-30%', '30-40%', '40-50%', '50-60%', '60-70%', '70-80%', '80%+'],
+                'Households': ['<5K', '5K-25K', '25K-75K', '75K-200K', '200K-500K', '500K-1M', '1M+']
+            };
+            
+            const colors = {
+                'ALICE_Percentage': ['#ffffcc', '#c7e9b4', '#7fcdbb', '#41b6c4', '#2c7fb8', '#253494', '#081d58'],
+                'Below_ALICE_Threshold_Percentage': ['#ffffcc', '#fed976', '#feb24c', '#fd8d3c', '#f03b20', '#bd0026', '#800026'],
+                'Poverty_Percentage': ['#f7fbff', '#deebf7', '#c6dbef', '#9ecae1', '#6baed6', '#3182bd', '#08519c'],
+                'Above_ALICE_Percentage': ['#800026', '#bd0026', '#e31a1c', '#fc4e2a', '#fd8d3c', '#feb24c', '#ffffcc'],
+                'Households': ['#edf8fb', '#b3cde3', '#8c96c6', '#8856a7', '#810f7c', '#4d004b', '#2d004a']
+            };
+            
+            const labels = ranges[metric] || ranges['ALICE_Percentage'];
+            const colorScale = colors[metric] || colors['ALICE_Percentage'];
+            
+            legendContent.innerHTML = labels.map((label, i) => `
+                <div class="legend-item">
+                    <div class="legend-color" style="background: ${colorScale[i]}"></div>
+                    <span>${label}</span>
+                </div>
+            `).join('');
+        }
+
+        function applyFilters() {
+            const stateFilter = document.getElementById('stateFilter').value;
+            const aliceMin = parseFloat(document.getElementById('aliceMin').value) || 0;
+            const aliceMax = parseFloat(document.getElementById('aliceMax').value) || 100;
+            const povertyMin = parseFloat(document.getElementById('povertyMin').value) || 0;
+            const povertyMax = parseFloat(document.getElementById('povertyMax').value) || 100;
+
+            filteredCounties = allCountyData.filter(row => {
+                const alice = parseFloat(row.ALICE_Percentage) || 0;
+                const poverty = parseFloat(row.Poverty_Percentage) || 0;
+                
+                return (!stateFilter || row.State === stateFilter) &&
+                       alice >= aliceMin && alice <= aliceMax &&
+                       poverty >= povertyMin && poverty <= povertyMax;
+            });
+
+            updateChoroplethColors();
+            updateAllStatistics();
+        }
+
+        function clearFilters() {
+            document.getElementById('stateFilter').value = '';
+            document.getElementById('aliceMin').value = '';
+            document.getElementById('aliceMax').value = '';
+            document.getElementById('povertyMin').value = '';
+            document.getElementById('povertyMax').value = '';
+            
+            filteredCounties = [...allCountyData];
+            updateChoroplethColors();
+            updateAllStatistics();
+        }
+
+        function updateChoroplethColors() {
+            const colorMetric = document.getElementById('colorMetric').value;
+            
+            if (countyLayer) {
+                countyLayer.eachLayer(function(layer) {
+                    const fips = layer.feature.properties.GEOID;
+                    const countyData = aliceData[fips];
+                    
+                    if (!countyData) {
+                        layer.setStyle({ fillColor: '#cccccc', fillOpacity: 0.3 });
+                        return;
+                    }
+
+                    // Check if this county passes current filters
+                    const isFiltered = filteredCounties.length === 0 || 
+                        filteredCounties.some(filtered => filtered['GEO id2'] === countyData['GEO id2']);
+                    
+                    if (!isFiltered) {
+                        layer.setStyle({ fillColor: '#cccccc', fillOpacity: 0.3 });
+                        return;
+                    }
+
+                    const value = parseFloat(countyData[colorMetric]) || 0;
+                    const color = getColor(value, colorMetric);
+                    layer.setStyle({ fillColor: color, fillOpacity: 0.8 });
+                });
+            }
+        }
+
+        function updateHeaderStats() {
+            const data = filteredCounties.length > 0 ? filteredCounties : allCountyData;
+            const count = data.length;
+            const totalHouseholds = data.reduce((sum, row) => sum + (parseFloat(row.Households) || 0), 0);
+            const avgALICE = count > 0 ? data.reduce((sum, row) => sum + (parseFloat(row.ALICE_Percentage) || 0), 0) / count : 0;
+            const avgPoverty = count > 0 ? data.reduce((sum, row) => sum + (parseFloat(row.Poverty_Percentage) || 0), 0) / count : 0;
+
+            document.getElementById('totalCounties').textContent = count.toLocaleString();
+            document.getElementById('totalHouseholds').textContent = Math.round(totalHouseholds).toLocaleString();
+            document.getElementById('avgALICE').textContent = avgALICE.toFixed(1) + '%';
+            document.getElementById('avgPoverty').textContent = avgPoverty.toFixed(1) + '%';
+        }
+
+        function updateSidebarStats() {
+            const data = filteredCounties.length > 0 ? filteredCounties : allCountyData;
+            const count = data.length;
+            const totalHouseholds = data.reduce((sum, row) => sum + (parseFloat(row.Households) || 0), 0);
+            const avgALICE = count > 0 ? data.reduce((sum, row) => sum + (parseFloat(row.ALICE_Percentage) || 0), 0) / count : 0;
+            const avgPoverty = count > 0 ? data.reduce((sum, row) => sum + (parseFloat(row.Poverty_Percentage) || 0), 0) / count : 0;
+
+            document.getElementById('statCounties').textContent = count.toLocaleString();
+            document.getElementById('statHouseholds').textContent = Math.round(totalHouseholds).toLocaleString();
+            document.getElementById('statAvgALICE').textContent = avgALICE.toFixed(1) + '%';
+            document.getElementById('statAvgPoverty').textContent = avgPoverty.toFixed(1) + '%';
+        }
+
+        function updateAllStatistics() {
+            updateHeaderStats();
+            updateSidebarStats();
+            updateVisualization();
+        }
+
+        function updateVisualization() {
+            const data = filteredCounties.length > 0 ? filteredCounties : allCountyData;
+            if (data.length === 0) return;
+
+            const aliceValues = data.map(row => parseFloat(row.ALICE_Percentage) || 0);
+            
+            const trace = {
+                x: aliceValues,
+                type: 'histogram',
+                nbinsx: 20,
+                marker: { color: '#667eea' }
+            };
+
+            const layout = {
+                title: 'ALICE % Distribution',
+                xaxis: { title: 'ALICE Percentage' },
+                yaxis: { title: 'County Count' },
+                height: 200,
+                margin: { t: 40, b: 40, l: 40, r: 40 }
+            };
+
+            Plotly.newPlot('plotlyChart', [trace], layout, {responsive: true});
+        }
+
+        function setupEventListeners() {
+            document.getElementById('colorMetric').addEventListener('change', function() {
+                updateChoroplethColors();
+                updateLegend(this.value);
+            });
+
+            // Search functionality
+            const searchInput = document.getElementById('countySearch');
+            const searchResults = document.getElementById('searchResults');
+            
+            searchInput.addEventListener('input', function() {
+                const query = this.value.toLowerCase();
+                if (query.length < 2) {
+                    searchResults.style.display = 'none';
+                    return;
+                }
+
+                const matches = allCountyData.filter(row => 
+                    row['GEO display_label']?.toLowerCase().includes(query) ||
+                    row.County?.toLowerCase().includes(query)
+                ).slice(0, 10);
+
+                if (matches.length > 0) {
+                    searchResults.innerHTML = matches.map(row => 
+                        `<div class="search-result-item" onclick="zoomToCounty('${row['GEO id2']}', '${row['GEO display_label']}')">
+                            ${row['GEO display_label']}
+                        </div>`
+                    ).join('');
+                    searchResults.style.display = 'block';
+                } else {
+                    searchResults.style.display = 'none';
+                }
+            });
+
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.search-container')) {
+                    searchResults.style.display = 'none';
+                }
+            });
+        }
+
+        function zoomToCounty(geoId, displayName) {
+            document.getElementById('countySearch').value = displayName;
+            document.getElementById('searchResults').style.display = 'none';
+            
+            const fips = String(geoId).split('.')[0];
+            
+            if (countyLayer) {
+                countyLayer.eachLayer(function(layer) {
+                    if (layer.feature.properties.GEOID === fips) {
+                        map.fitBounds(layer.getBounds());
+                        layer.setStyle({
+                            weight: 3,
+                            color: '#ff6b6b',
+                            fillOpacity: 0.9
+                        });
+                        
+                        // Reset style after 3 seconds
+                        setTimeout(() => {
+                            layer.setStyle({
+                                weight: 1,
+                                color: 'white',
+                                fillOpacity: 0.8
+                            });
+                        }, 3000);
+                    }
+                });
+            }
+        }
+
+        function exportFilteredData() {
+            const data = filteredCounties.length > 0 ? filteredCounties : allCountyData;
+            const csv = Papa.unparse(data);
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `alice_county_data_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        function exportVisualization() {
+            Plotly.downloadImage('plotlyChart', {
+                format: 'png',
+                width: 800,
+                height: 600,
+                filename: `alice_histogram_${new Date().toISOString().split('T')[0]}`
+            });
+        }
+
+        function shareCurrentView() {
+            const params = new URLSearchParams({
+                metric: document.getElementById('colorMetric').value,
+                state: document.getElementById('stateFilter').value,
+                aliceMin: document.getElementById('aliceMin').value,
+                aliceMax: document.getElementById('aliceMax').value
+            });
+            
+            const shareUrl = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+            navigator.clipboard.writeText(shareUrl).then(() => {
+                alert('Share URL copied to clipboard!');
+            });
+        }
+
+        // Initialize with all data
+        filteredCounties = [];
+    </script>
+</body>
+</html>
