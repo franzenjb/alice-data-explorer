@@ -1,0 +1,9 @@
+{
+  "total_counties": 3235,
+  "counties_with_alice_data": "3077",
+  "avg_alice_percentage": 29.555534611634712,
+  "avg_poverty_percentage": 14.469210269743254,
+  "total_households": 128441431.0,
+  "data_coverage_percent": 95.11591962905719,
+  "projection": "EPSG:4269"
+}
