@@ -536,7 +536,7 @@
             });
         }
 
-        // Get color for a value based on current metric and color scheme
+        // Get color for a value based on current metric and color scheme - using consistent full dataset scaling
         function getColor(value, metric) {
             if (!value && value !== 0) return '#999';
             
@@ -549,15 +549,15 @@
                 thresholds = [0, 1000, 5000, 10000, 25000, 50000, 100000, 200000, 500000];
                 normalizedValue = value;
             } else {
-                // Percentage-based metrics - use dynamic thresholds for better contrast
-                const allValues = filteredData
+                // Use ALL data for consistent color scaling, not just filtered data
+                const allValues = allCountiesData
                     .map(f => f.properties[metric])
                     .filter(v => v != null && !isNaN(v))
                     .sort((a, b) => a - b);
                 
                 if (allValues.length === 0) return colors[0];
                 
-                // Create dynamic thresholds based on data distribution
+                // Create consistent thresholds based on full dataset
                 const step = Math.floor(allValues.length / colors.length);
                 thresholds = [];
                 for (let i = 0; i < colors.length; i++) {
@@ -673,7 +673,7 @@
             updateLegend();
         }
 
-        // Update legend with dynamic values
+        // Update legend with consistent values based on full dataset
         function updateLegend() {
             const legend = document.querySelector('.legend');
             if (!legend) return;
@@ -681,8 +681,8 @@
             const colors = colorSchemes[currentColorScheme];
             const metricName = document.querySelector('#metric-select option:checked').textContent;
             
-            // Calculate dynamic legend values based on filtered data
-            const allValues = filteredData
+            // Use ALL data for consistent legend, not just filtered data
+            const allValues = allCountiesData
                 .map(f => f.properties[currentMetric])
                 .filter(v => v != null && !isNaN(v))
                 .sort((a, b) => a - b);

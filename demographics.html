@@ -634,13 +634,16 @@
             if (!value && value !== 0) return '#999';
             
             const colors = colorSchemes[currentColorScheme];
-            const allValues = filteredData
+            
+            // Use ALL data for consistent color scaling, not just filtered data
+            const allValues = allCountiesData
                 .map(f => f.properties[metric])
                 .filter(v => v != null && !isNaN(v))
                 .sort((a, b) => a - b);
             
             if (allValues.length === 0) return colors[0];
             
+            // Create consistent thresholds based on full dataset
             const step = Math.floor(allValues.length / colors.length);
             const thresholds = [];
             for (let i = 0; i < colors.length; i++) {
@@ -764,7 +767,8 @@
             const colors = colorSchemes[currentColorScheme];
             const config = metricConfigs[currentMetric];
             
-            const allValues = filteredData
+            // Use ALL data for consistent legend, not just filtered data
+            const allValues = allCountiesData
                 .map(f => f.properties[currentMetric])
                 .filter(v => v != null && !isNaN(v))
                 .sort((a, b) => a - b);
