@@ -759,6 +759,57 @@
             updateChoropleth();
             updateStatistics();
             updateFilterSummary();
+            
+            // Auto-zoom to filtered area
+            handleAutoZoom(selectedState, searchTerm);
+        }
+
+        // Handle automatic zooming to selected areas
+        function handleAutoZoom(selectedState, searchTerm) {
+            if (searchTerm) {
+                // Zoom to specific county
+                const matchingCounty = allCountiesData.find(feature => 
+                    feature.properties.NAME.toLowerCase().includes(searchTerm)
+                );
+                if (matchingCounty) {
+                    zoomToFeature(matchingCounty);
+                }
+            } else if (selectedState) {
+                // Zoom to state
+                zoomToState(selectedState);
+            } else {
+                // Reset to full US view
+                map.setView([39.8283, -98.5795], 4);
+            }
+        }
+
+        // Zoom to a specific feature (county)
+        function zoomToFeature(feature) {
+            if (feature && feature.geometry) {
+                const layer = L.geoJSON(feature);
+                map.fitBounds(layer.getBounds(), {
+                    padding: [20, 20],
+                    maxZoom: 9
+                });
+            }
+        }
+
+        // Zoom to a state (all counties in that state)
+        function zoomToState(stateName) {
+            const stateCounties = allCountiesData.filter(feature => 
+                feature.properties.State === stateName
+            );
+            
+            if (stateCounties.length > 0) {
+                const stateLayer = L.geoJSON({
+                    type: "FeatureCollection",
+                    features: stateCounties
+                });
+                map.fitBounds(stateLayer.getBounds(), {
+                    padding: [20, 20],
+                    maxZoom: 7
+                });
+            }
         }
 
         // Update filter summary
