@@ -75,18 +75,105 @@ class ALICETigerIntegrator:
         
         # Ensure FIPS codes are strings and properly formatted
         counties_gdf['GEOID'] = counties_gdf['GEOID'].astype(str).str.zfill(5)
-        alice_df['FIPS'] = alice_df['FIPS'].astype(str).str.zfill(5)
+        alice_df['FIPS'] = alice_df['GEO id2'].astype(str).str.split('.').str[0].str.zfill(5)
         
-        logger.info(f"ALICE FIPS sample: {alice_df['FIPS'].head().tolist()}")
-        logger.info(f"County GEOID sample: {counties_gdf['GEOID'].head().tolist()}")
+        # Filter out rows with missing or invalid FIPS codes
+        valid_fips_alice = alice_df[alice_df['FIPS'].str.len() == 5].copy()
+        missing_fips_alice = alice_df[alice_df['FIPS'].str.len() != 5].copy()
         
-        # Perform the join
+        logger.info(f"ALICE records with valid FIPS: {len(valid_fips_alice)}")
+        logger.info(f"ALICE records with missing FIPS: {len(missing_fips_alice)}")
+        
+        # Primary join on FIPS codes
         merged_gdf = counties_gdf.merge(
-            alice_df, 
+            valid_fips_alice, 
             left_on='GEOID', 
             right_on='FIPS', 
             how='left'
         )
+        
+        # Secondary join for missing FIPS using state and county name
+        if len(missing_fips_alice) > 0:
+            logger.info("Attempting secondary join using state and county names...")
+            
+            # Create state mapping for missing FIPS records
+            state_mapping = {
+                'Alabama': 'AL',
+                'Alaska': 'AK', 
+                'Arizona': 'AZ',
+                'Arkansas': 'AR',
+                'California': 'CA',
+                'Colorado': 'CO',
+                'Connecticut': 'CT',
+                'Delaware': 'DE',
+                'Florida': 'FL',
+                'Georgia': 'GA',
+                'Hawaii': 'HI',
+                'Idaho': 'ID',
+                'Illinois': 'IL',
+                'Indiana': 'IN',
+                'Iowa': 'IA',
+                'Kansas': 'KS',
+                'Kentucky': 'KY',
+                'Louisiana': 'LA',
+                'Maine': 'ME',
+                'Maryland': 'MD',
+                'Massachusetts': 'MA',
+                'Michigan': 'MI',
+                'Minnesota': 'MN',
+                'Mississippi': 'MS',
+                'Missouri': 'MO',
+                'Montana': 'MT',
+                'Nebraska': 'NE',
+                'Nevada': 'NV',
+                'New Hampshire': 'NH',
+                'New Jersey': 'NJ',
+                'New Mexico': 'NM',
+                'New York': 'NY',
+                'North Carolina': 'NC',
+                'North Dakota': 'ND',
+                'Ohio': 'OH',
+                'Oklahoma': 'OK',
+                'Oregon': 'OR',
+                'Pennsylvania': 'PA',
+                'Rhode Island': 'RI',
+                'South Carolina': 'SC',
+                'South Dakota': 'SD',
+                'Tennessee': 'TN',
+                'Texas': 'TX',
+                'Utah': 'UT',
+                'Vermont': 'VT',
+                'Virginia': 'VA',
+                'Washington': 'WA',
+                'West Virginia': 'WV',
+                'Wisconsin': 'WI',
+                'Wyoming': 'WY'
+            }
+            
+            missing_fips_alice['State_Abbr'] = missing_fips_alice['State'].map(state_mapping)
+            
+            # Try to match on state and county name
+            for idx, alice_row in missing_fips_alice.iterrows():
+                if pd.isna(alice_row['County']) or pd.isna(alice_row['State_Abbr']):
+                    continue
+                    
+                # Find matching county in shapefile
+                county_match = counties_gdf[
+                    (counties_gdf['STUSPS'] == alice_row['State_Abbr']) & 
+                    (counties_gdf['NAME'].str.lower() == alice_row['County'].lower())
+                ]
+                
+                if len(county_match) == 1:
+                    geoid = county_match.iloc[0]['GEOID']
+                    # Update the merged data for this county
+                    mask = merged_gdf['GEOID'] == geoid
+                    for col in ['Households', 'Poverty_Percentage', 'ALICE_Percentage', 
+                               'Below_ALICE_Threshold_Percentage', 'Above_ALICE_Percentage']:
+                        if col in alice_row and pd.notna(alice_row[col]):
+                            merged_gdf.loc[mask, col] = alice_row[col]
+                    merged_gdf.loc[mask, 'State'] = alice_row['State']
+                    merged_gdf.loc[mask, 'County'] = alice_row['County']
+                    logger.info(f"Matched {alice_row['County']}, {alice_row['State']} via name lookup")
         
         logger.info(f"Merged {len(merged_gdf)} counties")
         logger.info(f"Counties with ALICE data: {merged_gdf['ALICE_Percentage'].notna().sum()}")
