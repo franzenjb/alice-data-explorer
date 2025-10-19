@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALICE Demographics Explorer - Dual Interface</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa;
+            overflow: hidden;
+        }
+
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .tab-container {
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            padding: 0 20px;
+        }
+
+        .tab {
+            padding: 15px 25px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            font-weight: 600;
+            color: #666;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            background: #f8f9fa;
+        }
+
+        .tab:hover {
+            color: #667eea;
+            background: #f8f9fa;
+        }
+
+        .content-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .tab-content {
+            display: none;
+            flex: 1;
+        }
+
+        .tab-content.active {
+            display: flex;
+        }
+
+        .sidebar {
+            width: 400px;
+            background: white;
+            border-right: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+
+        .controls {
+            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .control-group {
+            margin-bottom: 25px;
+        }
+
+        .control-group label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .search-container {
+            position: relative;
+            margin-bottom: 15px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 40px 12px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+        }
+
+        .category-container {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+
+        .category {
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .category:last-child {
+            border-bottom: none;
+        }
+
+        .category-header {
+            padding: 15px;
+            background: #f8f9fa;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.2s;
+        }
+
+        .category-header:hover {
+            background: #e9ecef;
+        }
+
+        .category-header.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .category-title {
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .category-count {
+            background: #6c757d;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin-left: 10px;
+        }
+
+        .category-header.active .category-count {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .category-toggle {
+            margin-left: 10px;
+            transform: rotate(0deg);
+            transition: transform 0.2s;
+        }
+
+        .category-header.active .category-toggle {
+            transform: rotate(90deg);
+        }
+
+        .variables-list {
+            display: none;
+            padding: 10px 15px;
+            background: white;
+        }
+
+        .variables-list.active {
+            display: block;
+        }
+
+        .variable-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .variable-item:last-child {
+            border-bottom: none;
+        }
+
+        .variable-checkbox {
+            margin-right: 10px;
+            transform: scale(1.1);
+        }
+
+        .variable-label {
+            font-size: 0.9rem;
+            color: #333;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .variable-label:hover {
+            color: #667eea;
+        }
+
+        .slider-container {
+            margin-top: 10px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .slider-group {
+            margin-bottom: 20px;
+        }
+
+        .slider-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .slider-value {
+            color: #667eea;
+            font-family: monospace;
+        }
+
+        .slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #e0e0e0;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .selected-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-top: 1px solid #e0e0e0;
+            text-align: center;
+        }
+
+        .selected-count {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .base-map-selector {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+
+        .base-map-btn {
+            flex: 1;
+            padding: 8px 12px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.8rem;
+            text-align: center;
+        }
+
+        .base-map-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .base-map-btn:hover {
+            border-color: #667eea;
+        }
+
+        .dropdown {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+
+        .dropdown:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #simpleMap, #comprehensiveMap {
+            width: 100%;
+            height: 100%;
+        }
+
+        .leaflet-popup-content {
+            font-family: inherit;
+            line-height: 1.4;
+        }
+
+        .popup-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .popup-data {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .popup-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .popup-item:last-child {
+            border-bottom: none;
+        }
+
+        .popup-label {
+            font-weight: 500;
+            color: #666;
+        }
+
+        .popup-value {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd8;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            z-index: 1000;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hide {
+            display: none;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Tab Navigation -->
+        <div class="tab-container">
+            <div class="tab active" data-tab="simple">Simple Explorer</div>
+            <div class="tab" data-tab="comprehensive">Comprehensive with Sliders</div>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="content-container">
+            <!-- Simple Tab -->
+            <div class="tab-content active" id="simple-tab">
+                <div class="sidebar">
+                    <div class="header">
+                        <h1>ALICE Demographics</h1>
+                        <p>Simple County Explorer</p>
+                    </div>
+                    
+                    <div class="controls">
+                        <!-- Base Map Selector -->
+                        <div class="control-group">
+                            <label>Base Map Style</label>
+                            <div class="base-map-selector">
+                                <div class="base-map-btn active" data-layer="light" data-map="simple">Light</div>
+                                <div class="base-map-btn" data-layer="dark" data-map="simple">Dark</div>
+                                <div class="base-map-btn" data-layer="satellite" data-map="simple">Satellite</div>
+                                <div class="base-map-btn" data-layer="terrain" data-map="simple">Terrain</div>
+                            </div>
+                        </div>
+
+                        <!-- Variable Selector -->
+                        <div class="control-group">
+                            <label for="simpleVariableSelect">Choose Demographic Variable</label>
+                            <select id="simpleVariableSelect" class="dropdown">
+                                <option value="ALICE_Percentage">ALICE Percentage</option>
+                                <option value="Poverty_Percentage">Poverty Percentage</option>
+                                <option value="Below_ALICE_Threshold_Percentage">Below ALICE Threshold</option>
+                                <option value="Total_Population">Total Population</option>
+                                <option value="Median_Household_Income">Median Household Income</option>
+                                <option value="Unemployment_Rate">Unemployment Rate</option>
+                                <option value="Bachelor_Degree_Plus">Bachelor's Degree or Higher</option>
+                                <option value="Health_Insurance_Coverage">Health Insurance Coverage</option>
+                                <option value="Broadband_Access">Broadband Internet Access</option>
+                                <option value="Housing_Cost_Burden">Housing Cost Burden</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="map-container">
+                    <div id="simpleMap"></div>
+                    <div class="loading hide" id="simpleLoading">
+                        <div class="spinner"></div>
+                        <div>Loading simple data...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comprehensive Tab -->
+            <div class="tab-content" id="comprehensive-tab">
+                <div class="sidebar">
+                    <div class="header">
+                        <h1>ALICE Demographics</h1>
+                        <p>Comprehensive with Sliders</p>
+                    </div>
+                    
+                    <div class="controls">
+                        <!-- Base Map Selector -->
+                        <div class="control-group">
+                            <label>Base Map Style</label>
+                            <div class="base-map-selector">
+                                <div class="base-map-btn active" data-layer="light" data-map="comprehensive">Light</div>
+                                <div class="base-map-btn" data-layer="dark" data-map="comprehensive">Dark</div>
+                                <div class="base-map-btn" data-layer="satellite" data-map="comprehensive">Satellite</div>
+                                <div class="base-map-btn" data-layer="terrain" data-map="comprehensive">Terrain</div>
+                            </div>
+                        </div>
+
+                        <!-- Variable Selector -->
+                        <div class="control-group">
+                            <label>Select Variables to Display</label>
+                            
+                            <!-- Search -->
+                            <div class="search-container">
+                                <input type="text" class="search-input" placeholder="Search variables..." id="variableSearch">
+                                <span class="search-icon">🔍</span>
+                            </div>
+
+                            <!-- Categories -->
+                            <div class="category-container" id="categoriesContainer">
+                                <!-- Categories will be populated here -->
+                            </div>
+                        </div>
+
+                        <!-- Visualization Sliders -->
+                        <div class="control-group">
+                            <label>Visualization Controls</label>
+                            <div class="slider-container" id="slidersContainer">
+                                <div class="slider-group">
+                                    <div class="slider-label">
+                                        <span>Opacity</span>
+                                        <span class="slider-value" id="opacityValue">70%</span>
+                                    </div>
+                                    <input type="range" class="slider" id="opacitySlider" min="0" max="100" value="70">
+                                </div>
+                                
+                                <div class="slider-group">
+                                    <div class="slider-label">
+                                        <span>Color Intensity</span>
+                                        <span class="slider-value" id="intensityValue">80%</span>
+                                    </div>
+                                    <input type="range" class="slider" id="intensitySlider" min="0" max="100" value="80">
+                                </div>
+
+                                <div class="slider-group">
+                                    <div class="slider-label">
+                                        <span>Border Width</span>
+                                        <span class="slider-value" id="borderValue">1px</span>
+                                    </div>
+                                    <input type="range" class="slider" id="borderSlider" min="0" max="5" value="1">
+                                </div>
+
+                                <div class="slider-group">
+                                    <div class="slider-label">
+                                        <span>Data Range</span>
+                                        <span class="slider-value" id="rangeValue">Full</span>
+                                    </div>
+                                    <input type="range" class="slider" id="rangeSlider" min="0" max="100" value="100">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="action-buttons">
+                            <button class="btn btn-primary" id="applyBtn">Apply Selection</button>
+                            <button class="btn btn-secondary" id="clearBtn">Clear All</button>
+                        </div>
+                    </div>
+
+                    <!-- Selected Variables Info -->
+                    <div class="selected-info">
+                        <div class="selected-count" id="selectedCount">0 variables selected</div>
+                    </div>
+                </div>
+
+                <div class="map-container">
+                    <div id="comprehensiveMap"></div>
+                    <div class="loading hide" id="comprehensiveLoading">
+                        <div class="spinner"></div>
+                        <div>Loading comprehensive data...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        class ALICETabbedExplorer {
+            constructor() {
+                this.simpleMap = null;
+                this.comprehensiveMap = null;
+                this.currentSimpleLayer = null;
+                this.currentComprehensiveLayer = null;
+                this.simpleData = null;
+                this.comprehensiveData = null;
+                this.categories = null;
+                this.selectedVariables = new Set();
+                this.tileLayers = {};
+                this.currentBasemap = { simple: 'light', comprehensive: 'light' };
+                this.sliders = {};
+                
+                this.init();
+            }
+
+            async init() {
+                this.setupTabs();
+                this.setupMaps();
+                this.setupEventListeners();
+                await this.loadData();
+                this.populateCategories();
+                this.setupSliders();
+                this.createSimpleVisualization();
+            }
+
+            setupTabs() {
+                const tabs = document.querySelectorAll('.tab');
+                const contents = document.querySelectorAll('.tab-content');
+                
+                tabs.forEach(tab => {
+                    tab.addEventListener('click', (e) => {
+                        const targetTab = e.target.dataset.tab;
+                        
+                        // Update tab appearance
+                        tabs.forEach(t => t.classList.remove('active'));
+                        e.target.classList.add('active');
+                        
+                        // Update content visibility
+                        contents.forEach(content => {
+                            content.classList.remove('active');
+                        });
+                        document.getElementById(`${targetTab}-tab`).classList.add('active');
+                        
+                        // Initialize maps when switching tabs
+                        setTimeout(() => {
+                            if (targetTab === 'simple' && this.simpleMap) {
+                                this.simpleMap.invalidateSize();
+                            } else if (targetTab === 'comprehensive' && this.comprehensiveMap) {
+                                this.comprehensiveMap.invalidateSize();
+                            }
+                        }, 100);
+                    });
+                });
+            }
+
+            setupMaps() {
+                // Initialize tile layers
+                this.tileLayers = {
+                    light: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap contributors'
+                    }),
+                    dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                        attribution: '© OpenStreetMap contributors, © CARTO'
+                    }),
+                    satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                        attribution: '© Esri, Maxar, Earthstar Geographics'
+                    }),
+                    terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenTopoMap contributors'
+                    })
+                };
+
+                // Initialize simple map
+                this.simpleMap = L.map('simpleMap').setView([39.8283, -98.5795], 4);
+                this.tileLayers.light.addTo(this.simpleMap);
+
+                // Initialize comprehensive map  
+                this.comprehensiveMap = L.map('comprehensiveMap').setView([39.8283, -98.5795], 4);
+                this.tileLayers.light.addTo(this.comprehensiveMap);
+            }
+
+            setupEventListeners() {
+                // Base map switching
+                document.querySelectorAll('.base-map-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const layer = e.target.dataset.layer;
+                        const mapType = e.target.dataset.map;
+                        this.switchBasemap(layer, mapType);
+                    });
+                });
+
+                // Simple variable selector
+                document.getElementById('simpleVariableSelect').addEventListener('change', () => {
+                    this.createSimpleVisualization();
+                });
+
+                // Search functionality
+                document.getElementById('variableSearch').addEventListener('input', (e) => {
+                    this.filterVariables(e.target.value);
+                });
+
+                // Action buttons
+                document.getElementById('applyBtn').addEventListener('click', () => {
+                    this.applySelection();
+                });
+
+                document.getElementById('clearBtn').addEventListener('click', () => {
+                    this.clearSelection();
+                });
+            }
+
+            setupSliders() {
+                // Opacity slider
+                const opacitySlider = document.getElementById('opacitySlider');
+                const opacityValue = document.getElementById('opacityValue');
+                opacitySlider.addEventListener('input', (e) => {
+                    opacityValue.textContent = e.target.value + '%';
+                    this.updateVisualization();
+                });
+
+                // Intensity slider
+                const intensitySlider = document.getElementById('intensitySlider');
+                const intensityValue = document.getElementById('intensityValue');
+                intensitySlider.addEventListener('input', (e) => {
+                    intensityValue.textContent = e.target.value + '%';
+                    this.updateVisualization();
+                });
+
+                // Border slider
+                const borderSlider = document.getElementById('borderSlider');
+                const borderValue = document.getElementById('borderValue');
+                borderSlider.addEventListener('input', (e) => {
+                    borderValue.textContent = e.target.value + 'px';
+                    this.updateVisualization();
+                });
+
+                // Range slider
+                const rangeSlider = document.getElementById('rangeSlider');
+                const rangeValue = document.getElementById('rangeValue');
+                rangeSlider.addEventListener('input', (e) => {
+                    rangeValue.textContent = e.target.value === '100' ? 'Full' : e.target.value + '%';
+                    this.updateVisualization();
+                });
+
+                this.sliders = {
+                    opacity: opacitySlider,
+                    intensity: intensitySlider,
+                    border: borderSlider,
+                    range: rangeSlider
+                };
+            }
+
+            switchBasemap(layerName, mapType) {
+                const map = mapType === 'simple' ? this.simpleMap : this.comprehensiveMap;
+                const currentLayer = this.currentBasemap[mapType];
+                
+                // Remove current layer
+                map.removeLayer(this.tileLayers[currentLayer]);
+                
+                // Add new layer
+                this.tileLayers[layerName].addTo(map);
+                this.currentBasemap[mapType] = layerName;
+                
+                // Update UI
+                document.querySelectorAll(`[data-map="${mapType}"]`).forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                document.querySelector(`[data-layer="${layerName}"][data-map="${mapType}"]`).classList.add('active');
+            }
+
+            async loadData() {
+                try {
+                    document.getElementById('simpleLoading').classList.remove('hide');
+                    document.getElementById('comprehensiveLoading').classList.remove('hide');
+                    
+                    // Load simple data (original ALICE data)
+                    const simpleResponse = await fetch('./alice_demographics_explorer_web.geojson');
+                    this.simpleData = await simpleResponse.json();
+                    
+                    // Load comprehensive data and categories
+                    const [comprehensiveResponse, categoriesResponse] = await Promise.all([
+                        fetch('./alice_census_comprehensive/alice_census_comprehensive_web.geojson'),
+                        fetch('./alice_census_comprehensive/variable_categories.json')
+                    ]);
+                    
+                    this.comprehensiveData = await comprehensiveResponse.json();
+                    this.categories = await categoriesResponse.json();
+                    
+                    console.log('Loaded simple data with', this.simpleData.features.length, 'counties');
+                    console.log('Loaded comprehensive data with', this.comprehensiveData.features.length, 'counties');
+                    console.log('Available categories:', Object.keys(this.categories));
+                    
+                } catch (error) {
+                    console.error('Error loading data:', error);
+                    alert('Error loading data. Please check the data files.');
+                } finally {
+                    document.getElementById('simpleLoading').classList.add('hide');
+                    document.getElementById('comprehensiveLoading').classList.add('hide');
+                }
+            }
+
+            createSimpleVisualization() {
+                if (!this.simpleData) return;
+                
+                if (this.currentSimpleLayer) {
+                    this.simpleMap.removeLayer(this.currentSimpleLayer);
+                }
+
+                const variable = document.getElementById('simpleVariableSelect').value;
+                const values = this.simpleData.features
+                    .map(f => f.properties[variable])
+                    .filter(v => v !== null && v !== undefined && !isNaN(v));
+
+                if (values.length === 0) return;
+
+                const min = Math.min(...values);
+                const max = Math.max(...values);
+
+                this.currentSimpleLayer = L.geoJSON(this.simpleData, {
+                    style: (feature) => {
+                        const value = feature.properties[variable];
+                        const opacity = value !== null && value !== undefined && !isNaN(value) ? 0.7 : 0.1;
+                        const color = this.getColor(value, min, max);
+                        
+                        return {
+                            fillColor: color,
+                            weight: 1,
+                            opacity: 0.8,
+                            color: '#666',
+                            fillOpacity: opacity
+                        };
+                    },
+                    onEachFeature: (feature, layer) => {
+                        layer.on({
+                            mouseover: (e) => {
+                                const layer = e.target;
+                                layer.setStyle({ weight: 3, color: '#333' });
+                            },
+                            mouseout: (e) => {
+                                this.currentSimpleLayer.resetStyle(e.target);
+                            },
+                            click: (e) => {
+                                this.showSimplePopup(feature, e.latlng, variable);
+                            }
+                        });
+                    }
+                }).addTo(this.simpleMap);
+            }
+
+            populateCategories() {
+                if (!this.categories) return;
+                
+                const container = document.getElementById('categoriesContainer');
+                container.innerHTML = '';
+
+                Object.entries(this.categories).forEach(([categoryName, categoryData]) => {
+                    const categoryDiv = document.createElement('div');
+                    categoryDiv.className = 'category';
+                    
+                    categoryDiv.innerHTML = `
+                        <div class="category-header" data-category="${categoryName}">
+                            <span class="category-title">${categoryName}</span>
+                            <span class="category-count">${categoryData.variables.length}</span>
+                            <span class="category-toggle">▶</span>
+                        </div>
+                        <div class="variables-list" data-category="${categoryName}">
+                            ${categoryData.variables.map(variable => `
+                                <div class="variable-item" data-variable="${variable}">
+                                    <input type="checkbox" class="variable-checkbox" id="var_${variable}" data-variable="${variable}">
+                                    <label for="var_${variable}" class="variable-label">${this.formatVariableName(variable)}</label>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                    
+                    container.appendChild(categoryDiv);
+                });
+
+                this.setupCategoryEventListeners();
+            }
+
+            setupCategoryEventListeners() {
+                // Category toggle
+                document.querySelectorAll('.category-header').forEach(header => {
+                    header.addEventListener('click', (e) => {
+                        const category = e.currentTarget.dataset.category;
+                        const variablesList = document.querySelector(`.variables-list[data-category="${category}"]`);
+                        const isActive = header.classList.contains('active');
+                        
+                        if (isActive) {
+                            header.classList.remove('active');
+                            variablesList.classList.remove('active');
+                        } else {
+                            header.classList.add('active');
+                            variablesList.classList.add('active');
+                        }
+                    });
+                });
+
+                // Variable selection
+                document.querySelectorAll('.variable-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', (e) => {
+                        const variable = e.target.dataset.variable;
+                        if (e.target.checked) {
+                            this.selectedVariables.add(variable);
+                        } else {
+                            this.selectedVariables.delete(variable);
+                        }
+                        this.updateSelectedCount();
+                    });
+                });
+            }
+
+            formatVariableName(variable) {
+                return variable.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            }
+
+            filterVariables(searchTerm) {
+                const term = searchTerm.toLowerCase();
+                
+                document.querySelectorAll('.variable-item').forEach(item => {
+                    const label = item.querySelector('.variable-label').textContent.toLowerCase();
+                    const variable = item.dataset.variable.toLowerCase();
+                    
+                    if (label.includes(term) || variable.includes(term)) {
+                        item.style.display = 'flex';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+
+                document.querySelectorAll('.category').forEach(category => {
+                    const visibleItems = category.querySelectorAll('.variable-item[style="display: flex;"], .variable-item:not([style])');
+                    
+                    if (term === '' || visibleItems.length > 0) {
+                        category.style.display = 'block';
+                    } else {
+                        category.style.display = 'none';
+                    }
+                });
+            }
+
+            updateSelectedCount() {
+                const count = this.selectedVariables.size;
+                const countElement = document.getElementById('selectedCount');
+                countElement.textContent = `${count} variable${count !== 1 ? 's' : ''} selected`;
+            }
+
+            applySelection() {
+                if (this.selectedVariables.size === 0) {
+                    alert('Please select at least one variable to display.');
+                    return;
+                }
+
+                if (!this.comprehensiveData) {
+                    alert('Data not loaded yet. Please wait.');
+                    return;
+                }
+
+                this.createComprehensiveVisualization();
+            }
+
+            clearSelection() {
+                this.selectedVariables.clear();
+                document.querySelectorAll('.variable-checkbox').forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+                this.updateSelectedCount();
+                
+                if (this.currentComprehensiveLayer) {
+                    this.comprehensiveMap.removeLayer(this.currentComprehensiveLayer);
+                    this.currentComprehensiveLayer = null;
+                }
+            }
+
+            createComprehensiveVisualization() {
+                if (this.currentComprehensiveLayer) {
+                    this.comprehensiveMap.removeLayer(this.currentComprehensiveLayer);
+                }
+
+                const primaryVariable = Array.from(this.selectedVariables)[0];
+                const values = this.comprehensiveData.features
+                    .map(f => f.properties[primaryVariable])
+                    .filter(v => v !== null && v !== undefined && !isNaN(v));
+
+                if (values.length === 0) {
+                    alert('No valid data found for the selected variable.');
+                    return;
+                }
+
+                const min = Math.min(...values);
+                const max = Math.max(...values);
+
+                this.currentComprehensiveLayer = L.geoJSON(this.comprehensiveData, {
+                    style: (feature) => this.getComprehensiveStyle(feature, primaryVariable, min, max),
+                    onEachFeature: (feature, layer) => {
+                        layer.on({
+                            mouseover: (e) => {
+                                const currentStyle = this.getComprehensiveStyle(feature, primaryVariable, min, max);
+                                e.target.setStyle({
+                                    weight: currentStyle.weight + 2,
+                                    color: '#333'
+                                });
+                            },
+                            mouseout: (e) => {
+                                this.currentComprehensiveLayer.resetStyle(e.target);
+                            },
+                            click: (e) => {
+                                this.showComprehensivePopup(feature, e.latlng);
+                            }
+                        });
+                    }
+                }).addTo(this.comprehensiveMap);
+            }
+
+            getComprehensiveStyle(feature, variable, min, max) {
+                const value = feature.properties[variable];
+                const opacity = value !== null && value !== undefined && !isNaN(value) ? 
+                    (this.sliders.opacity.value / 100) : 0.1;
+                const color = this.getColor(value, min, max, this.sliders.intensity.value / 100);
+                
+                return {
+                    fillColor: color,
+                    weight: parseInt(this.sliders.border.value),
+                    opacity: 0.8,
+                    color: '#666',
+                    fillOpacity: opacity
+                };
+            }
+
+            updateVisualization() {
+                if (this.currentComprehensiveLayer) {
+                    this.currentComprehensiveLayer.eachLayer((layer) => {
+                        const feature = layer.feature;
+                        const primaryVariable = Array.from(this.selectedVariables)[0];
+                        if (primaryVariable) {
+                            const values = this.comprehensiveData.features
+                                .map(f => f.properties[primaryVariable])
+                                .filter(v => v !== null && v !== undefined && !isNaN(v));
+                            const min = Math.min(...values);
+                            const max = Math.max(...values);
+                            
+                            const style = this.getComprehensiveStyle(feature, primaryVariable, min, max);
+                            layer.setStyle(style);
+                        }
+                    });
+                }
+            }
+
+            getColor(value, min, max, intensity = 0.8) {
+                if (value === null || value === undefined || isNaN(value)) {
+                    return '#cccccc';
+                }
+                
+                const rangeFilter = this.sliders?.range?.value || 100;
+                const effectiveMax = min + ((max - min) * (rangeFilter / 100));
+                const clampedValue = Math.min(value, effectiveMax);
+                
+                const normalized = (clampedValue - min) / (effectiveMax - min);
+                const colors = [
+                    '#ffffcc', '#ffeda0', '#fed976', '#feb24c',
+                    '#fd8d3c', '#fc4e2a', '#e31a1c', '#bd0026'
+                ];
+                
+                const index = Math.min(Math.floor(normalized * colors.length), colors.length - 1);
+                let color = colors[index];
+                
+                // Apply intensity
+                if (intensity < 1) {
+                    const r = parseInt(color.slice(1, 3), 16);
+                    const g = parseInt(color.slice(3, 5), 16);
+                    const b = parseInt(color.slice(5, 7), 16);
+                    
+                    const newR = Math.round(r + (255 - r) * (1 - intensity));
+                    const newG = Math.round(g + (255 - g) * (1 - intensity));
+                    const newB = Math.round(b + (255 - b) * (1 - intensity));
+                    
+                    color = `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
+                }
+                
+                return color;
+            }
+
+            showSimplePopup(feature, latlng, variable) {
+                const props = feature.properties;
+                const value = props[variable];
+                const formattedValue = value !== null && value !== undefined ? 
+                    (typeof value === 'number' ? value.toLocaleString() : value) : 'N/A';
+                
+                const popupContent = `
+                    <div class="popup-title">${props.County || props.NAME}, ${props.State || props.STATE_NAME}</div>
+                    <div class="popup-data">
+                        <div class="popup-item">
+                            <span class="popup-label">${this.formatVariableName(variable)}:</span>
+                            <span class="popup-value">${formattedValue}</span>
+                        </div>
+                    </div>
+                `;
+                
+                L.popup()
+                    .setLatLng(latlng)
+                    .setContent(popupContent)
+                    .openOn(this.simpleMap);
+            }
+
+            showComprehensivePopup(feature, latlng) {
+                const props = feature.properties;
+                const selectedVars = Array.from(this.selectedVariables);
+                
+                let popupContent = `
+                    <div class="popup-title">${props.County}, ${props.State}</div>
+                    <div class="popup-data">
+                `;
+                
+                selectedVars.forEach(variable => {
+                    const value = props[variable];
+                    const formattedValue = value !== null && value !== undefined ? 
+                        (typeof value === 'number' ? value.toLocaleString() : value) : 'N/A';
+                    
+                    popupContent += `
+                        <div class="popup-item">
+                            <span class="popup-label">${this.formatVariableName(variable)}:</span>
+                            <span class="popup-value">${formattedValue}</span>
+                        </div>
+                    `;
+                });
+                
+                popupContent += '</div>';
+                
+                L.popup()
+                    .setLatLng(latlng)
+                    .setContent(popupContent)
+                    .openOn(this.comprehensiveMap);
+            }
+        }
+
+        // Initialize the application when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            new ALICETabbedExplorer();
+        });
+    </script>
+</body>
+</html>
