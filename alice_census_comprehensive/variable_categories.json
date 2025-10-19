@@ -1,0 +1,167 @@
+{
+  "ALICE Metrics": {
+    "description": "ALICE household economic security data",
+    "variables": [
+      "ALICE_Percentage",
+      "Poverty_Percentage",
+      "Below_ALICE_Threshold_Percentage",
+      "Above_ALICE_Percentage",
+      "Households"
+    ]
+  },
+  "Demographics": {
+    "description": "Population by age and gender",
+    "variables": [
+      "Total_Population",
+      "Male_Population",
+      "Female_Population",
+      "Male_Under_5",
+      "Female_Under_5",
+      "Male_5_9",
+      "Female_5_9",
+      "Male_10_14",
+      "Female_10_14",
+      "Male_15_17",
+      "Female_15_17",
+      "Male_18_19",
+      "Female_18_19",
+      "Male_20_24",
+      "Female_20_24",
+      "Male_25_29",
+      "Female_25_29",
+      "Male_30_34",
+      "Female_30_34",
+      "Male_35_44",
+      "Female_35_44",
+      "Male_45_54",
+      "Female_45_54",
+      "Male_55_64",
+      "Female_55_64",
+      "Male_65_74",
+      "Female_65_74",
+      "Male_75_84",
+      "Female_75_84",
+      "Male_85_Plus",
+      "Female_85_Plus"
+    ]
+  },
+  "Race and Ethnicity": {
+    "description": "Racial and ethnic composition",
+    "variables": [
+      "Total_Race_Population",
+      "White_Alone",
+      "Black_Alone",
+      "Native_American_Alone",
+      "Asian_Alone",
+      "Pacific_Islander_Alone",
+      "Other_Race_Alone",
+      "Two_Or_More_Races",
+      "Total_Hispanic_Population",
+      "Not_Hispanic_Latino",
+      "Hispanic_Latino"
+    ]
+  },
+  "Education": {
+    "description": "Educational attainment",
+    "variables": [
+      "Total_Education_Population",
+      "No_School",
+      "Grade_12_No_Diploma",
+      "High_School_Graduate",
+      "GED",
+      "Some_College_Less_1_Year",
+      "Some_College_1_Plus_Years",
+      "Associates_Degree",
+      "Bachelors_Degree",
+      "Masters_Degree",
+      "Professional_Degree",
+      "Doctorate_Degree"
+    ]
+  },
+  "Income": {
+    "description": "Household income distribution",
+    "variables": [
+      "Total_Household_Income",
+      "Income_Less_10K",
+      "Income_10K_15K",
+      "Income_15K_20K",
+      "Income_20K_25K",
+      "Income_25K_30K",
+      "Income_30K_35K",
+      "Income_35K_40K",
+      "Income_40K_45K",
+      "Income_45K_50K",
+      "Income_50K_60K",
+      "Income_60K_75K",
+      "Income_75K_100K",
+      "Income_100K_125K",
+      "Income_125K_150K",
+      "Income_150K_200K",
+      "Income_200K_Plus",
+      "Median_Household_Income"
+    ]
+  },
+  "Employment and Housing": {
+    "description": "Labor force and housing characteristics",
+    "variables": [
+      "Total_Labor_Force",
+      "In_Labor_Force",
+      "Employed",
+      "Unemployed",
+      "Not_In_Labor_Force",
+      "Total_Housing_Units",
+      "Occupied_Housing_Units",
+      "Vacant_Housing_Units",
+      "Owner_Occupied_Housing",
+      "Renter_Occupied_Housing",
+      "Median_Home_Value"
+    ]
+  },
+  "Transportation": {
+    "description": "Commuting and vehicle ownership",
+    "variables": [
+      "Total_Commuters",
+      "Commute_Car_Alone",
+      "Commute_Carpool",
+      "Commute_Public_Transport",
+      "Commute_Bicycle",
+      "Commute_Walked",
+      "Commute_Other",
+      "Work_From_Home",
+      "No_Vehicle_Available",
+      "One_Vehicle_Available",
+      "Two_Vehicles_Available",
+      "Three_Plus_Vehicles_Available"
+    ]
+  },
+  "Health and Social": {
+    "description": "Health, poverty, and social characteristics",
+    "variables": [
+      "Below_Poverty_Level",
+      "No_Health_Insurance_Under_19",
+      "No_Health_Insurance_19_34",
+      "No_Health_Insurance_35_64",
+      "No_Health_Insurance_65_Plus",
+      "Veteran_Population",
+      "With_Disability",
+      "Family_Households",
+      "Married_Couple_Family",
+      "Householder_Living_Alone"
+    ]
+  },
+  "Technology and Language": {
+    "description": "Technology access and language spoken",
+    "variables": [
+      "Has_Computer",
+      "No_Computer",
+      "Has_Internet_Subscription",
+      "No_Internet_Subscription",
+      "English_Only",
+      "Spanish",
+      "Chinese",
+      "Vietnamese",
+      "Tagalog",
+      "Other_Language"
+    ]
+  }
+}

@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALICE Comprehensive Demographics Explorer</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa;
+            overflow: hidden;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 400px;
+            background: white;
+            border-right: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+
+        .controls {
+            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .control-group {
+            margin-bottom: 25px;
+        }
+
+        .control-group label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .search-container {
+            position: relative;
+            margin-bottom: 15px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 40px 12px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+        }
+
+        .category-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+
+        .category {
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .category:last-child {
+            border-bottom: none;
+        }
+
+        .category-header {
+            padding: 15px;
+            background: #f8f9fa;
+            cursor: pointer;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            transition: background-color 0.2s;
+        }
+
+        .category-header:hover {
+            background: #e9ecef;
+        }
+
+        .category-header.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .category-title {
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .category-count {
+            background: #6c757d;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin-left: 10px;
+        }
+
+        .category-header.active .category-count {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .category-toggle {
+            margin-left: 10px;
+            transform: rotate(0deg);
+            transition: transform 0.2s;
+        }
+
+        .category-header.active .category-toggle {
+            transform: rotate(90deg);
+        }
+
+        .variables-list {
+            display: none;
+            padding: 10px 15px;
+            background: white;
+        }
+
+        .variables-list.active {
+            display: block;
+        }
+
+        .variable-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .variable-item:last-child {
+            border-bottom: none;
+        }
+
+        .variable-checkbox {
+            margin-right: 10px;
+            transform: scale(1.1);
+        }
+
+        .variable-label {
+            font-size: 0.9rem;
+            color: #333;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .variable-label:hover {
+            color: #667eea;
+        }
+
+        .selected-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-top: 1px solid #e0e0e0;
+            text-align: center;
+        }
+
+        .selected-count {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .base-map-selector {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+
+        .base-map-btn {
+            flex: 1;
+            padding: 8px 12px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.8rem;
+            text-align: center;
+        }
+
+        .base-map-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .base-map-btn:hover {
+            border-color: #667eea;
+        }
+
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .leaflet-popup-content {
+            font-family: inherit;
+            line-height: 1.4;
+        }
+
+        .popup-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .popup-data {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .popup-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .popup-item:last-child {
+            border-bottom: none;
+        }
+
+        .popup-label {
+            font-weight: 500;
+            color: #666;
+        }
+
+        .popup-value {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd8;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            z-index: 1000;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hide {
+            display: none;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="header">
+                <h1>ALICE Demographics</h1>
+                <p>Comprehensive County Explorer</p>
+            </div>
+            
+            <div class="controls">
+                <!-- Base Map Selector -->
+                <div class="control-group">
+                    <label>Base Map Style</label>
+                    <div class="base-map-selector">
+                        <div class="base-map-btn active" data-layer="light">Light</div>
+                        <div class="base-map-btn" data-layer="dark">Dark</div>
+                        <div class="base-map-btn" data-layer="satellite">Satellite</div>
+                        <div class="base-map-btn" data-layer="terrain">Terrain</div>
+                    </div>
+                </div>
+
+                <!-- Variable Selector -->
+                <div class="control-group">
+                    <label>Select Variables to Display</label>
+                    
+                    <!-- Search -->
+                    <div class="search-container">
+                        <input type="text" class="search-input" placeholder="Search variables..." id="variableSearch">
+                        <span class="search-icon">🔍</span>
+                    </div>
+
+                    <!-- Categories -->
+                    <div class="category-container" id="categoriesContainer">
+                        <!-- Categories will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="action-buttons">
+                    <button class="btn btn-primary" id="applyBtn">Apply Selection</button>
+                    <button class="btn btn-secondary" id="clearBtn">Clear All</button>
+                </div>
+            </div>
+
+            <!-- Selected Variables Info -->
+            <div class="selected-info">
+                <div class="selected-count" id="selectedCount">0 variables selected</div>
+            </div>
+        </div>
+
+        <!-- Map Container -->
+        <div class="map-container">
+            <div id="map"></div>
+            <div class="loading hide" id="loading">
+                <div class="spinner"></div>
+                <div>Loading comprehensive data...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        class ALICEComprehensiveExplorer {
+            constructor() {
+                this.map = null;
+                this.currentLayer = null;
+                this.data = null;
+                this.categories = null;
+                this.selectedVariables = new Set();
+                this.tileLayers = {};
+                this.currentBasemap = 'light';
+                
+                this.init();
+            }
+
+            async init() {
+                this.setupMap();
+                this.setupEventListeners();
+                await this.loadData();
+                this.populateCategories();
+            }
+
+            setupMap() {
+                // Initialize tile layers
+                this.tileLayers = {
+                    light: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap contributors'
+                    }),
+                    dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                        attribution: '© OpenStreetMap contributors, © CARTO'
+                    }),
+                    satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                        attribution: '© Esri, Maxar, Earthstar Geographics'
+                    }),
+                    terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenTopoMap contributors'
+                    })
+                };
+
+                // Initialize map
+                this.map = L.map('map').setView([39.8283, -98.5795], 4);
+                this.tileLayers[this.currentBasemap].addTo(this.map);
+            }
+
+            setupEventListeners() {
+                // Base map switching
+                document.querySelectorAll('.base-map-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const layer = e.target.dataset.layer;
+                        this.switchBasemap(layer);
+                    });
+                });
+
+                // Search functionality
+                document.getElementById('variableSearch').addEventListener('input', (e) => {
+                    this.filterVariables(e.target.value);
+                });
+
+                // Action buttons
+                document.getElementById('applyBtn').addEventListener('click', () => {
+                    this.applySelection();
+                });
+
+                document.getElementById('clearBtn').addEventListener('click', () => {
+                    this.clearSelection();
+                });
+            }
+
+            switchBasemap(layerName) {
+                // Remove current layer
+                this.map.removeLayer(this.tileLayers[this.currentBasemap]);
+                
+                // Add new layer
+                this.tileLayers[layerName].addTo(this.map);
+                this.currentBasemap = layerName;
+                
+                // Update UI
+                document.querySelectorAll('.base-map-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                document.querySelector(`[data-layer="${layerName}"]`).classList.add('active');
+            }
+
+            async loadData() {
+                try {
+                    document.getElementById('loading').classList.remove('hide');
+                    
+                    // Load both data and categories
+                    const [dataResponse, categoriesResponse] = await Promise.all([
+                        fetch('./alice_census_comprehensive/alice_census_comprehensive_web.geojson'),
+                        fetch('./alice_census_comprehensive/variable_categories.json')
+                    ]);
+                    
+                    this.data = await dataResponse.json();
+                    this.categories = await categoriesResponse.json();
+                    
+                    console.log('Loaded data with', this.data.features.length, 'counties');
+                    console.log('Available categories:', Object.keys(this.categories));
+                    
+                } catch (error) {
+                    console.error('Error loading data:', error);
+                    alert('Error loading comprehensive data. Please check the data files.');
+                } finally {
+                    document.getElementById('loading').classList.add('hide');
+                }
+            }
+
+            populateCategories() {
+                const container = document.getElementById('categoriesContainer');
+                container.innerHTML = '';
+
+                Object.entries(this.categories).forEach(([categoryName, categoryData]) => {
+                    const categoryDiv = document.createElement('div');
+                    categoryDiv.className = 'category';
+                    
+                    categoryDiv.innerHTML = `
+                        <div class="category-header" data-category="${categoryName}">
+                            <span class="category-title">${categoryName}</span>
+                            <span class="category-count">${categoryData.variables.length}</span>
+                            <span class="category-toggle">▶</span>
+                        </div>
+                        <div class="variables-list" data-category="${categoryName}">
+                            ${categoryData.variables.map(variable => `
+                                <div class="variable-item" data-variable="${variable}">
+                                    <input type="checkbox" class="variable-checkbox" id="var_${variable}" data-variable="${variable}">
+                                    <label for="var_${variable}" class="variable-label">${this.formatVariableName(variable)}</label>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                    
+                    container.appendChild(categoryDiv);
+                });
+
+                // Add event listeners
+                this.setupCategoryEventListeners();
+            }
+
+            setupCategoryEventListeners() {
+                // Category toggle
+                document.querySelectorAll('.category-header').forEach(header => {
+                    header.addEventListener('click', (e) => {
+                        const category = e.currentTarget.dataset.category;
+                        const variablesList = document.querySelector(`.variables-list[data-category="${category}"]`);
+                        const isActive = header.classList.contains('active');
+                        
+                        if (isActive) {
+                            header.classList.remove('active');
+                            variablesList.classList.remove('active');
+                        } else {
+                            header.classList.add('active');
+                            variablesList.classList.add('active');
+                        }
+                    });
+                });
+
+                // Variable selection
+                document.querySelectorAll('.variable-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', (e) => {
+                        const variable = e.target.dataset.variable;
+                        if (e.target.checked) {
+                            this.selectedVariables.add(variable);
+                        } else {
+                            this.selectedVariables.delete(variable);
+                        }
+                        this.updateSelectedCount();
+                    });
+                });
+            }
+
+            formatVariableName(variable) {
+                return variable.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            }
+
+            filterVariables(searchTerm) {
+                const term = searchTerm.toLowerCase();
+                
+                document.querySelectorAll('.variable-item').forEach(item => {
+                    const label = item.querySelector('.variable-label').textContent.toLowerCase();
+                    const variable = item.dataset.variable.toLowerCase();
+                    
+                    if (label.includes(term) || variable.includes(term)) {
+                        item.style.display = 'flex';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+
+                // Hide categories with no visible variables
+                document.querySelectorAll('.category').forEach(category => {
+                    const visibleItems = category.querySelectorAll('.variable-item[style="display: flex;"], .variable-item:not([style])');
+                    const categoryHeader = category.querySelector('.category-header');
+                    
+                    if (term === '' || visibleItems.length > 0) {
+                        category.style.display = 'block';
+                    } else {
+                        category.style.display = 'none';
+                    }
+                });
+            }
+
+            updateSelectedCount() {
+                const count = this.selectedVariables.size;
+                const countElement = document.getElementById('selectedCount');
+                countElement.textContent = `${count} variable${count !== 1 ? 's' : ''} selected`;
+            }
+
+            applySelection() {
+                if (this.selectedVariables.size === 0) {
+                    alert('Please select at least one variable to display.');
+                    return;
+                }
+
+                if (!this.data) {
+                    alert('Data not loaded yet. Please wait.');
+                    return;
+                }
+
+                this.createChoroplethMap();
+            }
+
+            clearSelection() {
+                this.selectedVariables.clear();
+                document.querySelectorAll('.variable-checkbox').forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+                this.updateSelectedCount();
+                
+                if (this.currentLayer) {
+                    this.map.removeLayer(this.currentLayer);
+                    this.currentLayer = null;
+                }
+            }
+
+            createChoroplethMap() {
+                if (this.currentLayer) {
+                    this.map.removeLayer(this.currentLayer);
+                }
+
+                // For simplicity, we'll use the first selected variable for choropleth
+                const primaryVariable = Array.from(this.selectedVariables)[0];
+                const values = this.data.features
+                    .map(f => f.properties[primaryVariable])
+                    .filter(v => v !== null && v !== undefined && !isNaN(v));
+
+                if (values.length === 0) {
+                    alert('No valid data found for the selected variable.');
+                    return;
+                }
+
+                const min = Math.min(...values);
+                const max = Math.max(...values);
+
+                this.currentLayer = L.geoJSON(this.data, {
+                    style: (feature) => {
+                        const value = feature.properties[primaryVariable];
+                        const opacity = value !== null && value !== undefined && !isNaN(value) 
+                            ? 0.7 : 0.1;
+                        const color = this.getColor(value, min, max);
+                        
+                        return {
+                            fillColor: color,
+                            weight: 1,
+                            opacity: 0.8,
+                            color: '#666',
+                            fillOpacity: opacity
+                        };
+                    },
+                    onEachFeature: (feature, layer) => {
+                        layer.on({
+                            mouseover: (e) => {
+                                const layer = e.target;
+                                layer.setStyle({
+                                    weight: 3,
+                                    color: '#333'
+                                });
+                            },
+                            mouseout: (e) => {
+                                this.currentLayer.resetStyle(e.target);
+                            },
+                            click: (e) => {
+                                this.showPopup(feature, e.latlng);
+                            }
+                        });
+                    }
+                }).addTo(this.map);
+            }
+
+            getColor(value, min, max) {
+                if (value === null || value === undefined || isNaN(value)) {
+                    return '#cccccc';
+                }
+                
+                const normalized = (value - min) / (max - min);
+                const colors = [
+                    '#ffffcc', '#ffeda0', '#fed976', '#feb24c',
+                    '#fd8d3c', '#fc4e2a', '#e31a1c', '#bd0026'
+                ];
+                
+                const index = Math.min(Math.floor(normalized * colors.length), colors.length - 1);
+                return colors[index];
+            }
+
+            showPopup(feature, latlng) {
+                const props = feature.properties;
+                const selectedVars = Array.from(this.selectedVariables);
+                
+                let popupContent = `
+                    <div class="popup-title">${props.County}, ${props.State}</div>
+                    <div class="popup-data">
+                `;
+                
+                selectedVars.forEach(variable => {
+                    const value = props[variable];
+                    const formattedValue = value !== null && value !== undefined ? 
+                        (typeof value === 'number' ? value.toLocaleString() : value) : 'N/A';
+                    
+                    popupContent += `
+                        <div class="popup-item">
+                            <span class="popup-label">${this.formatVariableName(variable)}:</span>
+                            <span class="popup-value">${formattedValue}</span>
+                        </div>
+                    `;
+                });
+                
+                popupContent += '</div>';
+                
+                L.popup()
+                    .setLatLng(latlng)
+                    .setContent(popupContent)
+                    .openOn(this.map);
+            }
+        }
+
+        // Initialize the application when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            new ALICEComprehensiveExplorer();
+        });
+    </script>
+</body>
+</html>
