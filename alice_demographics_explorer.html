@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALICE + Census Demographics Explorer</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- noUiSlider CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.css">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1900px;
+            margin: 0 auto;
+            padding: 12px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2em;
+            margin-bottom: 6px;
+            font-weight: 400;
+        }
+
+        .header p {
+            color: #7f8c8d;
+            font-size: 0.95em;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .controls-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 18px;
+            margin-bottom: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 18px;
+            margin-bottom: 18px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            color: #34495e;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+        }
+
+        .control-group select,
+        .control-group input {
+            padding: 10px;
+            border: 2px solid #e0e6ed;
+            border-radius: 6px;
+            font-size: 13px;
+            background: white;
+            transition: all 0.3s ease;
+        }
+
+        .control-group select:focus,
+        .control-group input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        .metric-categories {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .metric-category {
+            background: rgba(52, 152, 219, 0.1);
+            border: 2px solid #e3f2fd;
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .metric-category h4 {
+            color: #1976d2;
+            margin-bottom: 8px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .metric-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .metric-btn {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .metric-btn:hover {
+            background: #f0f8ff;
+            border-color: #3498db;
+        }
+
+        .metric-btn.active {
+            background: #3498db;
+            color: white;
+            border-color: #2980b9;
+        }
+
+        .slider-container {
+            margin: 15px 0;
+            padding: 12px;
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 8px;
+            border: 2px solid #e3f2fd;
+        }
+
+        .slider-label {
+            font-weight: 600;
+            color: #1976d2;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+        }
+
+        .slider-values {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .noUi-connect {
+            background: linear-gradient(90deg, #3498db, #2980b9) !important;
+        }
+
+        .noUi-handle {
+            background: #2980b9 !important;
+            border: 2px solid #fff !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+        }
+
+        .map-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            margin-bottom: 12px;
+        }
+
+        #map {
+            height: 600px;
+            width: 100%;
+            border-radius: 8px;
+            border: 2px solid #e0e6ed;
+        }
+
+        .stats-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 18px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .stat-value {
+            font-size: 1.6em;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 0.8em;
+            opacity: 0.9;
+        }
+
+        .legend {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin: 8px;
+            border: 2px solid #e3f2fd;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .legend h4 {
+            margin: 0 0 8px 0;
+            color: #1976d2;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 6px 0;
+            font-size: 11px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 14px;
+            margin-right: 8px;
+            border: 1px solid #ccc;
+            border-radius: 2px;
+        }
+
+        .info-popup {
+            max-width: 350px;
+            font-size: 13px;
+        }
+
+        .info-popup h4 {
+            margin: 0 0 10px 0;
+            color: #1976d2;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 5px;
+            font-size: 15px;
+        }
+
+        .info-popup .metric-section {
+            margin: 8px 0;
+        }
+
+        .info-popup .metric-section h5 {
+            color: #2c3e50;
+            margin: 6px 0 4px 0;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-popup .metric {
+            display: flex;
+            justify-content: space-between;
+            margin: 3px 0;
+            padding: 2px 0;
+            font-size: 12px;
+        }
+
+        .info-popup .metric:nth-child(even) {
+            background: rgba(52, 152, 219, 0.1);
+            margin: 3px -8px;
+            padding: 2px 8px;
+            border-radius: 3px;
+        }
+
+        .filter-summary {
+            background: rgba(52, 152, 219, 0.1);
+            border: 2px solid #e3f2fd;
+            border-radius: 6px;
+            padding: 8px;
+            margin-top: 12px;
+            font-size: 12px;
+            color: #1976d2;
+        }
+
+        .reset-filters {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-top: 8px;
+            font-size: 12px;
+        }
+
+        .reset-filters:hover {
+            background: #c0392b;
+            transform: translateY(-1px);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 8px;
+            }
+            
+            .controls-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            #map {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-chart-area"></i> ALICE + Census Demographics Explorer</h1>
+            <p>Comprehensive demographic analysis combining ALICE household data with Census demographics including income, education, housing, employment, and population characteristics</p>
+        </div>
+
+        <div class="controls-panel">
+            <div class="metric-categories">
+                <div class="metric-category">
+                    <h4><i class="fas fa-home"></i> ALICE Metrics</h4>
+                    <div class="metric-buttons">
+                        <button class="metric-btn active" data-metric="ALICE_Percentage">ALICE %</button>
+                        <button class="metric-btn" data-metric="Poverty_Percentage">Poverty %</button>
+                        <button class="metric-btn" data-metric="Below_ALICE_Threshold_Percentage">Below ALICE %</button>
+                        <button class="metric-btn" data-metric="Above_ALICE_Percentage">Above ALICE %</button>
+                    </div>
+                </div>
+
+                <div class="metric-category">
+                    <h4><i class="fas fa-dollar-sign"></i> Economic</h4>
+                    <div class="metric-buttons">
+                        <button class="metric-btn" data-metric="Median_Household_Income">Median Income</button>
+                        <button class="metric-btn" data-metric="Median_Home_Value">Home Value</button>
+                        <button class="metric-btn" data-metric="Homeownership_Rate">Homeownership %</button>
+                        <button class="metric-btn" data-metric="Unemployment_Rate">Unemployment %</button>
+                    </div>
+                </div>
+
+                <div class="metric-category">
+                    <h4><i class="fas fa-users"></i> Demographics</h4>
+                    <div class="metric-buttons">
+                        <button class="metric-btn" data-metric="Total_Population">Population</button>
+                        <button class="metric-btn" data-metric="Population_Per_Household">People/Household</button>
+                        <button class="metric-btn" data-metric="Elderly_Population_Rate">Elderly %</button>
+                        <button class="metric-btn" data-metric="Minority_Population_Rate">Minority %</button>
+                    </div>
+                </div>
+
+                <div class="metric-category">
+                    <h4><i class="fas fa-graduation-cap"></i> Education & Work</h4>
+                    <div class="metric-buttons">
+                        <button class="metric-btn" data-metric="College_Degree_Rate">College %</button>
+                        <button class="metric-btn" data-metric="Work_From_Home_Rate">Remote Work %</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls-grid">
+                <div class="control-group">
+                    <label for="state-filter"><i class="fas fa-filter"></i> Filter by State</label>
+                    <select id="state-filter">
+                        <option value="">All States</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="search-county"><i class="fas fa-search"></i> Search County</label>
+                    <input type="text" id="search-county" placeholder="Enter county name...">
+                </div>
+
+                <div class="control-group">
+                    <label for="color-scheme"><i class="fas fa-palette"></i> Color Scheme</label>
+                    <select id="color-scheme">
+                        <option value="viridis">Viridis (High Contrast)</option>
+                        <option value="plasma">Plasma (Purple-Pink)</option>
+                        <option value="inferno">Inferno (Fire)</option>
+                        <option value="turbo">Turbo (Rainbow)</option>
+                        <option value="spectral">Spectral (Cool-Warm)</option>
+                        <option value="rdylbu">Red-Yellow-Blue</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="comparison-mode"><i class="fas fa-balance-scale"></i> Comparison Mode</label>
+                    <select id="comparison-mode">
+                        <option value="single">Single Metric</option>
+                        <option value="correlation">Show Correlation</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Range Sliders -->
+            <div class="slider-container">
+                <div class="slider-label">
+                    <i class="fas fa-sliders-h"></i> 
+                    <span id="primary-slider-label">Primary Metric Range</span>
+                </div>
+                <div id="primary-slider"></div>
+                <div class="slider-values" id="primary-slider-values">
+                    <span>Min</span>
+                    <span>Max</span>
+                </div>
+            </div>
+
+            <div class="filter-summary" id="filter-summary">
+                <strong>Active Filters:</strong> <span id="filter-text">None</span>
+                <button class="reset-filters" onclick="resetAllFilters()">
+                    <i class="fas fa-undo"></i> Reset All Filters
+                </button>
+            </div>
+        </div>
+
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+
+        <div class="stats-panel">
+            <div class="stats-grid" id="stats-grid">
+                <!-- Stats will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.js"></script>
+    
+    <script>
+        // Global variables
+        let map;
+        let countiesLayer;
+        let allCountiesData = [];
+        let filteredData = [];
+        let currentMetric = 'ALICE_Percentage';
+        let currentColorScheme = 'viridis';
+        let primaryRange = [0, 100];
+
+        // Enhanced color schemes
+        const colorSchemes = {
+            viridis: ['#440154', '#482777', '#3f4a8a', '#31678e', '#26838f', '#1f9d8a', '#6cce5a', '#b6de2b', '#fee825'],
+            plasma: ['#0d0887', '#4c02a1', '#7e03a8', '#a53bad', '#cc6677', '#e99450', '#fdc328', '#f0f921'],
+            inferno: ['#000004', '#2c115f', '#721f81', '#b73779', '#f1605d', '#fd9a6a', '#feca8d', '#fcffa4'],
+            turbo: ['#30123b', '#4777ef', '#1ac7c2', '#5cb85c', '#afbc21', '#feb72d', '#fb8022', '#d23105'],
+            spectral: ['#9e0142', '#d53e4f', '#f46d43', '#fdae61', '#fee08b', '#e6f598', '#abdda4', '#66c2a5', '#3288bd'],
+            rdylbu: ['#d73027', '#f46d43', '#fdae61', '#fee090', '#ffffbf', '#e0f3f8', '#abd9e9', '#74add1', '#4575b4']
+        };
+
+        // Metric configurations
+        const metricConfigs = {
+            'ALICE_Percentage': { range: [0, 100], format: 'percent', label: 'ALICE Percentage' },
+            'Poverty_Percentage': { range: [0, 50], format: 'percent', label: 'Poverty Percentage' },
+            'Below_ALICE_Threshold_Percentage': { range: [0, 100], format: 'percent', label: 'Below ALICE Threshold' },
+            'Above_ALICE_Percentage': { range: [0, 100], format: 'percent', label: 'Above ALICE Threshold' },
+            'Total_Population': { range: [0, 1000000], format: 'number', label: 'Total Population' },
+            'Median_Household_Income': { range: [20000, 150000], format: 'currency', label: 'Median Household Income' },
+            'Median_Home_Value': { range: [50000, 800000], format: 'currency', label: 'Median Home Value' },
+            'College_Degree_Rate': { range: [0, 80], format: 'percent', label: 'College Degree Rate' },
+            'Homeownership_Rate': { range: [30, 95], format: 'percent', label: 'Homeownership Rate' },
+            'Elderly_Population_Rate': { range: [5, 40], format: 'percent', label: 'Elderly Population Rate' },
+            'Work_From_Home_Rate': { range: [0, 50], format: 'percent', label: 'Work From Home Rate' },
+            'Unemployment_Rate': { range: [0, 25], format: 'percent', label: 'Unemployment Rate' },
+            'Minority_Population_Rate': { range: [0, 100], format: 'percent', label: 'Minority Population Rate' },
+            'Population_Per_Household': { range: [1.5, 4.5], format: 'decimal', label: 'Population Per Household' }
+        };
+
+        // Initialize the map
+        function initMap() {
+            map = L.map('map').setView([39.8283, -98.5795], 4);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            // Add legend
+            const legend = L.control({position: 'bottomright'});
+            legend.onAdd = function(map) {
+                const div = L.DomUtil.create('div', 'legend');
+                div.innerHTML = '<h4>Loading...</h4>';
+                return div;
+            };
+            legend.addTo(map);
+        }
+
+        // Initialize slider
+        function initSlider() {
+            const slider = document.getElementById('primary-slider');
+            const config = metricConfigs[currentMetric];
+            
+            if (slider.noUiSlider) {
+                slider.noUiSlider.destroy();
+            }
+            
+            noUiSlider.create(slider, {
+                start: config.range,
+                connect: true,
+                range: {
+                    'min': config.range[0],
+                    'max': config.range[1]
+                },
+                step: config.format === 'percent' ? 0.1 : (config.range[1] - config.range[0]) / 1000,
+                format: {
+                    to: function (value) {
+                        return Math.round(value * 10) / 10;
+                    },
+                    from: function (value) {
+                        return Number(value);
+                    }
+                }
+            });
+
+            slider.noUiSlider.on('update', function (values) {
+                primaryRange = [parseFloat(values[0]), parseFloat(values[1])];
+                updateSliderLabel();
+                applyFilters();
+            });
+            
+            updateSliderLabel();
+        }
+
+        function updateSliderLabel() {
+            const config = metricConfigs[currentMetric];
+            const formatValue = (value) => {
+                switch(config.format) {
+                    case 'percent': return `${value}%`;
+                    case 'currency': return `$${Math.round(value/1000)}K`;
+                    case 'number': return Math.round(value/1000) + 'K';
+                    case 'decimal': return value.toFixed(1);
+                    default: return value;
+                }
+            };
+            
+            document.getElementById('primary-slider-label').textContent = 
+                `${config.label}: ${formatValue(primaryRange[0])} - ${formatValue(primaryRange[1])}`;
+        }
+
+        // Load data
+        async function loadCountyData() {
+            try {
+                console.log('Loading comprehensive demographic data...');
+                const response = await fetch('alice_census_output/alice_census_web.geojson');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                
+                console.log('Data loaded successfully:', data.features.length, 'counties');
+                allCountiesData = data.features;
+                filteredData = [...allCountiesData];
+                
+                populateStateFilter();
+                updateChoropleth();
+                updateStatistics();
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                alert('Error loading demographic data. Please ensure the alice_census_output/alice_census_web.geojson file exists.');
+            }
+        }
+
+        function populateStateFilter() {
+            const states = [...new Set(allCountiesData
+                .map(feature => feature.properties.State)
+                .filter(state => state)
+                .sort())];
+            
+            const stateSelect = document.getElementById('state-filter');
+            stateSelect.innerHTML = '<option value="">All States</option>';
+            
+            states.forEach(state => {
+                const option = document.createElement('option');
+                option.value = state;
+                option.textContent = state;
+                stateSelect.appendChild(option);
+            });
+        }
+
+        function getColor(value, metric) {
+            if (!value && value !== 0) return '#999';
+            
+            const colors = colorSchemes[currentColorScheme];
+            const allValues = filteredData
+                .map(f => f.properties[metric])
+                .filter(v => v != null && !isNaN(v))
+                .sort((a, b) => a - b);
+            
+            if (allValues.length === 0) return colors[0];
+            
+            const step = Math.floor(allValues.length / colors.length);
+            const thresholds = [];
+            for (let i = 0; i < colors.length; i++) {
+                const index = Math.min(i * step, allValues.length - 1);
+                thresholds.push(allValues[index]);
+            }
+            
+            for (let i = thresholds.length - 1; i >= 0; i--) {
+                if (value >= thresholds[i]) {
+                    return colors[Math.min(i, colors.length - 1)];
+                }
+            }
+            return colors[0];
+        }
+
+        function style(feature) {
+            const value = feature.properties[currentMetric];
+            return {
+                fillColor: getColor(value, currentMetric),
+                weight: 1,
+                opacity: 0.8,
+                color: 'white',
+                fillOpacity: 0.8
+            };
+        }
+
+        function highlightFeature(e) {
+            const layer = e.target;
+            layer.setStyle({
+                weight: 3,
+                color: '#000',
+                fillOpacity: 0.9
+            });
+            layer.bringToFront();
+        }
+
+        function resetHighlight(e) {
+            countiesLayer.resetStyle(e.target);
+        }
+
+        function createPopupContent(properties) {
+            const formatValue = (value, format) => {
+                if (!value && value !== 0) return 'No data';
+                switch(format) {
+                    case 'percent': return `${parseFloat(value).toFixed(1)}%`;
+                    case 'currency': return `$${parseInt(value).toLocaleString()}`;
+                    case 'number': return parseInt(value).toLocaleString();
+                    case 'decimal': return parseFloat(value).toFixed(1);
+                    default: return value;
+                }
+            };
+
+            return `
+                <div class="info-popup">
+                    <h4>${properties.NAME}, ${properties.State}</h4>
+                    
+                    <div class="metric-section">
+                        <h5>ALICE Metrics</h5>
+                        <div class="metric"><span>ALICE Percentage:</span><strong>${formatValue(properties.ALICE_Percentage, 'percent')}</strong></div>
+                        <div class="metric"><span>Poverty Percentage:</span><strong>${formatValue(properties.Poverty_Percentage, 'percent')}</strong></div>
+                        <div class="metric"><span>Above ALICE:</span><strong>${formatValue(properties.Above_ALICE_Percentage, 'percent')}</strong></div>
+                    </div>
+                    
+                    <div class="metric-section">
+                        <h5>Demographics</h5>
+                        <div class="metric"><span>Population:</span><strong>${formatValue(properties.Total_Population, 'number')}</strong></div>
+                        <div class="metric"><span>Households:</span><strong>${formatValue(properties.Households, 'number')}</strong></div>
+                        <div class="metric"><span>People/Household:</span><strong>${formatValue(properties.Population_Per_Household, 'decimal')}</strong></div>
+                    </div>
+                    
+                    <div class="metric-section">
+                        <h5>Economic</h5>
+                        <div class="metric"><span>Median Income:</span><strong>${formatValue(properties.Median_Household_Income, 'currency')}</strong></div>
+                        <div class="metric"><span>Home Value:</span><strong>${formatValue(properties.Median_Home_Value, 'currency')}</strong></div>
+                        <div class="metric"><span>Homeownership:</span><strong>${formatValue(properties.Homeownership_Rate, 'percent')}</strong></div>
+                        <div class="metric"><span>Unemployment:</span><strong>${formatValue(properties.Unemployment_Rate, 'percent')}</strong></div>
+                    </div>
+                    
+                    <div class="metric-section">
+                        <h5>Education & Work</h5>
+                        <div class="metric"><span>College Degree:</span><strong>${formatValue(properties.College_Degree_Rate, 'percent')}</strong></div>
+                        <div class="metric"><span>Remote Work:</span><strong>${formatValue(properties.Work_From_Home_Rate, 'percent')}</strong></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function onEachFeature(feature, layer) {
+            layer.on({
+                mouseover: highlightFeature,
+                mouseout: resetHighlight,
+                click: function(e) {
+                    const popup = createPopupContent(feature.properties);
+                    layer.bindPopup(popup).openPopup();
+                }
+            });
+        }
+
+        function updateChoropleth() {
+            if (countiesLayer) {
+                map.removeLayer(countiesLayer);
+            }
+
+            const geoJsonData = {
+                type: "FeatureCollection",
+                features: filteredData
+            };
+
+            countiesLayer = L.geoJSON(geoJsonData, {
+                style: style,
+                onEachFeature: onEachFeature
+            }).addTo(map);
+
+            updateLegend();
+        }
+
+        function updateLegend() {
+            const legend = document.querySelector('.legend');
+            if (!legend) return;
+
+            const colors = colorSchemes[currentColorScheme];
+            const config = metricConfigs[currentMetric];
+            
+            const allValues = filteredData
+                .map(f => f.properties[currentMetric])
+                .filter(v => v != null && !isNaN(v))
+                .sort((a, b) => a - b);
+            
+            let legendHTML = `<h4>${config.label}</h4>`;
+            
+            if (allValues.length > 0) {
+                const step = Math.floor(allValues.length / colors.length);
+                
+                colors.forEach((color, i) => {
+                    const valueIndex = Math.min(i * step, allValues.length - 1);
+                    const nextValueIndex = Math.min((i + 1) * step, allValues.length - 1);
+                    const minValue = allValues[valueIndex];
+                    const maxValue = allValues[nextValueIndex];
+                    
+                    let label;
+                    switch(config.format) {
+                        case 'percent':
+                            label = i === colors.length - 1 ? 
+                                `${minValue.toFixed(1)}%+` :
+                                `${minValue.toFixed(1)}% - ${maxValue.toFixed(1)}%`;
+                            break;
+                        case 'currency':
+                            label = i === colors.length - 1 ? 
+                                `$${Math.round(minValue/1000)}K+` :
+                                `$${Math.round(minValue/1000)}K - $${Math.round(maxValue/1000)}K`;
+                            break;
+                        case 'number':
+                            label = i === colors.length - 1 ? 
+                                `${Math.round(minValue/1000)}K+` :
+                                `${Math.round(minValue/1000)}K - ${Math.round(maxValue/1000)}K`;
+                            break;
+                        default:
+                            label = i === colors.length - 1 ? 
+                                `${minValue.toFixed(1)}+` :
+                                `${minValue.toFixed(1)} - ${maxValue.toFixed(1)}`;
+                    }
+                    
+                    legendHTML += `
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: ${color}"></div>
+                            <span>${label}</span>
+                        </div>
+                    `;
+                });
+            } else {
+                legendHTML += '<div class="legend-item">No data available</div>';
+            }
+
+            legend.innerHTML = legendHTML;
+        }
+
+        function applyFilters() {
+            const selectedState = document.getElementById('state-filter').value;
+            const searchTerm = document.getElementById('search-county').value.toLowerCase().trim();
+
+            filteredData = allCountiesData.filter(feature => {
+                const props = feature.properties;
+                
+                if (selectedState && props.State !== selectedState) return false;
+                if (searchTerm && !props.NAME.toLowerCase().includes(searchTerm)) return false;
+                
+                const value = props[currentMetric];
+                if (value != null && (value < primaryRange[0] || value > primaryRange[1])) return false;
+                
+                return true;
+            });
+
+            updateChoropleth();
+            updateStatistics();
+            updateFilterSummary();
+        }
+
+        function updateFilterSummary() {
+            const filters = [];
+            
+            const selectedState = document.getElementById('state-filter').value;
+            if (selectedState) filters.push(`State: ${selectedState}`);
+            
+            const searchTerm = document.getElementById('search-county').value.trim();
+            if (searchTerm) filters.push(`Search: "${searchTerm}"`);
+            
+            const config = metricConfigs[currentMetric];
+            if (primaryRange[0] > config.range[0] || primaryRange[1] < config.range[1]) {
+                filters.push(`${config.label}: ${primaryRange[0]} - ${primaryRange[1]}`);
+            }
+            
+            document.getElementById('filter-text').textContent = 
+                filters.length > 0 ? filters.join(', ') : 'None';
+        }
+
+        function resetAllFilters() {
+            document.getElementById('state-filter').value = '';
+            document.getElementById('search-county').value = '';
+            
+            const config = metricConfigs[currentMetric];
+            primaryRange = [...config.range];
+            initSlider();
+            
+            applyFilters();
+        }
+
+        function updateStatistics() {
+            const validData = filteredData.filter(f => f.properties[currentMetric] != null);
+            
+            if (validData.length === 0) {
+                document.getElementById('stats-grid').innerHTML = '<p>No data available for current filters</p>';
+                return;
+            }
+
+            const values = validData.map(f => parseFloat(f.properties[currentMetric]) || 0);
+            const config = metricConfigs[currentMetric];
+            
+            const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
+            const sortedValues = [...values].sort((a, b) => a - b);
+            const median = sortedValues[Math.floor(sortedValues.length / 2)];
+            const min = Math.min(...values);
+            const max = Math.max(...values);
+            
+            const formatStat = (value) => {
+                switch(config.format) {
+                    case 'percent': return `${value.toFixed(1)}%`;
+                    case 'currency': return `$${Math.round(value/1000)}K`;
+                    case 'number': return Math.round(value/1000) + 'K';
+                    case 'decimal': return value.toFixed(1);
+                    default: return value;
+                }
+            };
+
+            const stats = [
+                { label: 'Filtered Counties', value: filteredData.length.toLocaleString(), icon: 'fa-map' },
+                { label: 'Counties with Data', value: validData.length.toLocaleString(), icon: 'fa-check-circle' },
+                { label: 'Average', value: formatStat(avg), icon: 'fa-chart-line' },
+                { label: 'Median', value: formatStat(median), icon: 'fa-chart-bar' },
+                { label: 'Minimum', value: formatStat(min), icon: 'fa-arrow-down' },
+                { label: 'Maximum', value: formatStat(max), icon: 'fa-arrow-up' }
+            ];
+
+            const statsGrid = document.getElementById('stats-grid');
+            statsGrid.innerHTML = stats.map(stat => `
+                <div class="stat-card">
+                    <div class="stat-value"><i class="fas ${stat.icon}"></i> ${stat.value}</div>
+                    <div class="stat-label">${stat.label}</div>
+                </div>
+            `).join('');
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+            loadCountyData();
+            
+            // Metric button handlers
+            document.querySelectorAll('.metric-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.metric-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentMetric = this.dataset.metric;
+                    primaryRange = [...metricConfigs[currentMetric].range];
+                    initSlider();
+                    updateChoropleth();
+                    updateStatistics();
+                });
+            });
+
+            // Other controls
+            document.getElementById('color-scheme').addEventListener('change', function() {
+                currentColorScheme = this.value;
+                updateChoropleth();
+            });
+
+            document.getElementById('state-filter').addEventListener('change', applyFilters);
+            document.getElementById('search-county').addEventListener('input', applyFilters);
+            
+            // Initialize slider for default metric
+            setTimeout(() => {
+                if (allCountiesData.length > 0) {
+                    initSlider();
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
