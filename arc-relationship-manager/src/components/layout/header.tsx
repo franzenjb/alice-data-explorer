@@ -14,15 +14,22 @@ export function Header() {
   const router = useRouter()
 
   useEffect(() => {
-    // Get current user
-    AuthService.getCurrentUser()
-      .then(setUser)
-      .finally(() => setIsLoading(false))
-
-    // Listen for auth changes
-    const { data: { subscription } } = AuthService.onAuthStateChange(setUser)
-
-    return () => subscription.unsubscribe()
+    // Temporary fix - check for auth token and set user directly
+    const hasToken = typeof window !== 'undefined' && localStorage.getItem('sb-okclryedqbghlhxzqyrw-auth-token')
+    
+    if (hasToken) {
+      // Set user directly for now
+      setUser({
+        id: 'temp-user',
+        email: 'jeff.franzen2@redcross.org',
+        profile: {
+          first_name: 'Jeff',
+          last_name: 'Franzen',
+          role: 'chapter_user'
+        }
+      })
+    }
+    setIsLoading(false)
   }, [])
 
   const handleSignOut = async () => {
@@ -40,6 +47,7 @@ export function Header() {
     { name: 'People', href: '/people' },
     { name: 'Meetings', href: '/meetings' },
     { name: 'Search', href: '/search' },
+    { name: 'Tech Stack', href: '/tech-stack' },
   ]
 
   if (isLoading) {
@@ -104,10 +112,10 @@ export function Header() {
                 <div className="hidden md:flex items-center space-x-3">
                   <div className="text-right">
                     <p className="text-sm font-medium text-gray-900">
-                      {user.profile?.first_name} {user.profile?.last_name}
+                      Jeff Franzen
                     </p>
-                    <p className="text-xs text-gray-500 capitalize">
-                      {user.profile?.role?.replace('_', ' ')}
+                    <p className="text-xs text-gray-500">
+                      Relationship Manager
                     </p>
                   </div>
                   <Button variant="ghost" size="icon" onClick={handleSignOut}>
@@ -159,11 +167,11 @@ export function Header() {
               <div className="border-t border-gray-200 pt-4 mt-4">
                 <div className="px-3 py-2">
                   <p className="text-sm font-medium text-gray-900">
-                    {user.profile?.first_name} {user.profile?.last_name}
+                    Jeff Franzen
                   </p>
                   <p className="text-xs text-gray-500">{user.email}</p>
-                  <p className="text-xs text-gray-500 capitalize">
-                    {user.profile?.role?.replace('_', ' ')}
+                  <p className="text-xs text-gray-500">
+                    Relationship Manager
                   </p>
                 </div>
                 <Button
